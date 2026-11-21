@@ -21,6 +21,7 @@ class Regla:
     nombre: str
     efecto: str  # NC, RR o INF cuando la regla no se cumple
     efecto_no_evaluable: str = RR  # cuando falta el dato para evaluarla
+    severidad: str | None = None  # si se indica, sustituye a la severidad que corresponde al efecto
 
 
 _R = [
@@ -55,7 +56,8 @@ _R = [
     Regla("X3", "La superficie del terreno coincide entre los documentos", RR),
     Regla("X4", "El número oficial coincide con la dirección de los demás documentos", RR),
     Regla("X5", "La clave catastral o cuenta predial coincide entre los documentos", RR),
-    Regla("X6", "Los documentos corresponden al mismo inmueble", NC),
+    # Es un defecto del documento entregado, no del inmueble: lo revisa una persona, pero destacado.
+    Regla("X6", "Los documentos corresponden al mismo inmueble", RR, severidad="alta"),
     Regla("X7", "El expediente incluye los cuatro tipos de documento", RR),
     Regla("X8", "El municipio de las autoridades emisoras coincide con el del inmueble", RR),
 ]

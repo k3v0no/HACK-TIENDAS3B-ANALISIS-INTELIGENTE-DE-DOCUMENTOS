@@ -35,7 +35,7 @@ def _clasificador(estado: Estado) -> Estado:
         lectura = estado["ocr"][documento.id]
         documento.legible = extraccion.es_legible(lectura)
         documento.confianza_ocr = extraccion.confianza_documento(lectura)
-        documento.tipo, razon = extraccion.clasificar(lectura, documento.archivo)
+        documento.tipo, razon, documento.tipo_detectado = extraccion.clasificar(lectura, documento.archivo)
         documento.observaciones = [razon]
     return {"documentos": estado["documentos"]}
 
@@ -155,6 +155,17 @@ GRAFO = _construir()
 
 def fecha_de_referencia() -> date:
     return a_fecha(settings.fecha_referencia) or date.today()
+
+
+def recalcular(documentos: list[Documento]) -> Dictamen:
+    """Vuelve a validar y dictaminar con los datos actuales (p. ej. tras una corrección manual).
+
+    No relee ni vuelve a extraer: solo corren los validadores y el dictaminador.
+    """
+    estado: Estado = {"documentos": documentos, "hoy": fecha_de_referencia()}
+    estado.update(_validador_documentos(estado))
+    estado.update(_validador_cruzado(estado))
+    return _dictaminador(estado)["dictamen"]
 
 
 def analizar(documentos: list[Documento], ocr_por_documento: dict[str, dict]) -> Dictamen:

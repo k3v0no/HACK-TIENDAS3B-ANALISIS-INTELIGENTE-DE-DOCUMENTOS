@@ -48,6 +48,8 @@ _PISTAS_NOMBRE = {
 class _Clasificacion(BaseModel):
     tipo: Literal["escrituras", "predial", "alineamiento_numero_oficial", "uso_de_suelo", "desconocido"]
     razon: str = Field(description="Una frase que explique la decisión")
+    que_es: str = Field(description="Qué documento es, en pocas palabras y sin datos personales, p. ej. "
+                                    "'constancia de estudios' o 'recibo de luz'")
 
 
 def _texto_plano(documento_ocr: dict, max_paginas: int = 3) -> tuple[str, str]:
@@ -68,8 +70,8 @@ def es_legible(documento_ocr: dict) -> bool:
     return caracteres >= 150 and confianza is not None and confianza >= CONFIANZA_MINIMA_LEGIBLE
 
 
-def clasificar(documento_ocr: dict, nombre_archivo: str) -> tuple[str, str]:
-    """Devuelve (tipo, explicación)."""
+def clasificar(documento_ocr: dict, nombre_archivo: str) -> tuple[str, str, str | None]:
+    """Devuelve (tipo, explicación, qué documento parece ser si no es de los esperados)."""
     encabezado, cuerpo = _texto_plano(documento_ocr)
     puntos = {
         tipo: sum(3 * encabezado.count(c) + min(cuerpo.count(c), 5) for c in claves)
@@ -79,7 +81,7 @@ def clasificar(documento_ocr: dict, nombre_archivo: str) -> tuple[str, str]:
     (mejor, p1), (_, p2) = orden[0], orden[1]
 
     if p1 >= 4 and p1 >= 2 * max(p2, 1):
-        return mejor, "Identificado por los términos del propio documento."
+        return mejor, "Identificado por los términos del propio documento.", None
 
     if es_legible(documento_ocr):
         try:
@@ -92,15 +94,18 @@ def clasificar(documento_ocr: dict, nombre_archivo: str) -> tuple[str, str]:
                 "responde desconocido.\n\n" + ocr.texto_numerado(documento_ocr, max_paginas=3)[:12000]
             )
             if respuesta.tipo != "desconocido":
-                return respuesta.tipo, f"Clasificado por el agente de lectura: {respuesta.razon}"
+                return respuesta.tipo, f"Clasificado por el agente de lectura: {respuesta.razon}", None
+            # Se leyó bien y no es ninguno de los cuatro: el nombre del archivo no puede contradecirlo.
+            que_es = respuesta.que_es.strip().rstrip(".") or "otro tipo de documento"
+            return "desconocido", f"No es un documento del expediente: {respuesta.razon}", que_es
         except Exception:
             pass
 
     nombre = normalizar(nombre_archivo)
     for tipo, pistas in _PISTAS_NOMBRE.items():
         if any(p in nombre for p in pistas):
-            return tipo, "El contenido no permite identificarlo; se tomó el tipo del nombre del archivo."
-    return "desconocido", "No se pudo identificar el tipo de documento."
+            return tipo, "El contenido no permite identificarlo; se tomó el tipo del nombre del archivo.", None
+    return "desconocido", "No se pudo identificar el tipo de documento.", None
 
 
 # ------------------------------------------------------------------- extractores

@@ -168,9 +168,14 @@ def validar_documentos(documentos: list[Documento], registros: dict[str, Registr
 
     for documento in documentos:
         if documento.tipo == "desconocido":
-            r.append(Resultado("G1", "no_cumple",
-                               f"«{documento.archivo}» no se identificó como ninguno de los cuatro tipos esperados.",
-                               documento_id=documento.id, titulo="Documento no identificado"))
+            if documento.tipo_detectado:
+                detalle = (f"«{documento.archivo}» parece ser {documento.tipo_detectado}, que no forma parte del expediente. "
+                           f"Se esperan escrituras, predial, alineamiento y número oficial, y uso de suelo.")
+                titulo = f"Documento que no corresponde: {documento.tipo_detectado}"
+            else:
+                detalle = f"«{documento.archivo}» no se identificó como ninguno de los cuatro tipos esperados."
+                titulo = "Documento no identificado"
+            r.append(Resultado("G1", "no_cumple", detalle, documento_id=documento.id, titulo=titulo))
         if not documento.legible:
             confianza = "sin texto reconocible" if documento.confianza_ocr is None else f"confianza de lectura de {documento.confianza_ocr:.0%}"
             r.append(Resultado("G2", "no_cumple",
@@ -454,7 +459,7 @@ def dictaminar(documentos: list[Documento], resultados: list[Resultado], hoy: da
     severidad = {NC: "alta", RR: "media", INF: "baja"}
     sin_comparar = [x for x in resultados if x.regla.id.startswith("X") and x.estado == "no_evaluable"]
     hallazgos = [
-        Hallazgo(regla_id=x.regla.id, severidad=severidad[x.efecto],
+        Hallazgo(regla_id=x.regla.id, severidad=x.regla.severidad or severidad[x.efecto],
                  titulo=x.titulo or x.regla.nombre, explicacion=x.detalle,
                  accion_sugerida=_ACCIONES.get(x.regla.id), evidencia=x.evidencia)
         for x in resultados if x.efecto and x not in sin_comparar
