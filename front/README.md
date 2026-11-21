@@ -1,3 +1,23 @@
+# Front: cómo correrlo
+
+```bash
+# una sola vez, desde la raíz del repo
+py -3 -m venv .venv
+.venv/Scripts/python -m pip install -r front/requirements.txt
+
+# cada vez
+cd front
+../.venv/Scripts/python -m streamlit run app.py               # http://localhost:8501
+```
+
+- `contrato.py`: forma del dictamen que el back debe entregar.
+- `servicio.py`: puente con el back. Cuando exista `back/pipeline.py` con
+  `analizar_expediente(rutas, inmueble) -> dict`, el front lo usa solo. Mientras tanto, los expedientes
+  se guardan y quedan en la bandeja como «Sin analizar».
+- Los archivos subidos y los dictámenes se guardan solo en local, en `modules/cargas/<id>/` (ignorado por git).
+
+---
+
 # Hackatón Tiendas 3B — Reto 1: Expedientes
 
 Repositorio de trabajo del equipo para el reto **Sistema multiagente para análisis inteligente de documentos** del Hackatón Tiendas 3B.

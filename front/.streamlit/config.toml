@@ -1,0 +1,18 @@
+[theme]
+base = "light"
+# Rojo primario del tema de tiendas3b.com (contraste AA con texto blanco). El rojo #FB0317 se usa
+# en acentos grandes desde ui.py.
+primaryColor = "#D7121E"
+backgroundColor = "#F7F7F7"
+secondaryBackgroundColor = "#F1F3F3"
+textColor = "#04211F"
+borderColor = "#E4E7E7"
+baseRadius = "10px"
+
+[server]
+# Solo accesible desde esta computadora: los documentos no salen de la máquina.
+address = "localhost"
+maxUploadSize = 200
+
+[browser]
+gatherUsageStats = false

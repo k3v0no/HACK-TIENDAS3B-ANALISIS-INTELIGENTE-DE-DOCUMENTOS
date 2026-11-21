@@ -1,4 +1,10 @@
 modules/
+node_modules/
+.ui-check/
+.venv/
+cache/
+*.pdf
+*.zip
 
 # Secretos
 .env
