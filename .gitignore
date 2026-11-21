@@ -1,1 +1,9 @@
 modules/
+node_modules/
+.ui-check/
+.venv/
+__pycache__/
+.env
+cache/
+*.pdf
+*.zip
