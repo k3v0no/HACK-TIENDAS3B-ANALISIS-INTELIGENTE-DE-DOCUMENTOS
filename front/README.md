@@ -34,9 +34,10 @@ tocar `CORS_ORIGINS`. La configuración está en `proxy.conf.mjs`:
 Si el back no responde, los expedientes se guardan y quedan como «Sin analizar»; el botón
 «Analizar» se activa cuando el back vuelve.
 
-## Cuentas de prueba
+## Cuentas iniciales
 
-Contraseña de todas: `demo3b`.
+La contraseña de estas cuentas **no está en el repositorio** (es público): pídela al equipo.
+En el código solo están su sal y su hash PBKDF2 (`src/app/core/cuentas.service.ts`).
 
 | Perfil | Usuario | Qué ve |
 |---|---|---|
@@ -50,7 +51,9 @@ Contraseña de todas: `demo3b`.
 | Auditor | `auditor` | Todo, en solo lectura |
 
 Las cuentas, la sesión y la lista de expedientes se simulan en el navegador (almacenamiento
-local; contraseñas derivadas con PBKDF2). El back no tiene una ruta para listar expedientes, así
+local; contraseñas derivadas con PBKDF2). Para cambiar la contraseña de las cuentas iniciales hay
+que recalcular sal y hash en `SEMILLA` y subir la versión de `LLAVE_CUENTAS`, para que los
+navegadores que ya las tenían las vuelvan a crear. El back no tiene una ruta para listar expedientes, así
 que para la demo el arrendador y los trabajadores usan el mismo navegador. Los archivos subidos
 se guardan en IndexedDB para poder reintentar el análisis.
 

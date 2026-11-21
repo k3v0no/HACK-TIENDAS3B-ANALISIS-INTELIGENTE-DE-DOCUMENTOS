@@ -1,9 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import {
-  CLAVE_PRUEBA, Cuenta, CuentasService, PERFIL_INFO, TIPO_ARRENDADOR, TIPO_TRABAJADOR, TipoCuenta,
-} from '../core/cuentas.service';
+import { CuentasService, TIPO_ARRENDADOR, TIPO_TRABAJADOR, TipoCuenta } from '../core/cuentas.service';
 import { DOC, TIPOS_DOCUMENTO } from '../core/modelos';
 import { rutaInicio } from '../core/navegacion';
 import { Estado } from '../ui/ui';
@@ -29,15 +27,12 @@ export class Portada {
   ];
   protected readonly tipos = TIPOS_DOCUMENTO;
   protected readonly DOC = DOC;
-  protected readonly PERFIL_INFO = PERFIL_INFO;
-  protected readonly CLAVE_PRUEBA = CLAVE_PRUEBA;
   protected readonly TIPO_ARRENDADOR = TIPO_ARRENDADOR;
 
   protected readonly elegido = signal<TipoCuenta | null>(null);
   protected readonly pestana = signal<'ingresar' | 'crear'>('ingresar');
   protected readonly error = signal('');
   protected readonly ocupado = signal(false);
-  protected readonly demo = signal<Cuenta[]>([]);
 
   protected usuario = '';
   protected clave = '';
@@ -49,17 +44,11 @@ export class Portada {
     this.elegido.set(tipo);
     this.pestana.set('ingresar');
     this.error.set('');
-    this.cuentas.cuentasDePrueba(tipo).then((c) => this.demo.set(c));
     setTimeout(() => document.getElementById('login-usuario')?.focus());
   }
 
   protected acceso(tipo: TipoCuenta): Acceso {
     return this.accesos.find((a) => a.tipo === tipo)!;
-  }
-
-  protected usarDemo(c: Cuenta): void {
-    this.usuario = c.usuario;
-    this.clave = CLAVE_PRUEBA;
   }
 
   protected async ingresar(): Promise<void> {

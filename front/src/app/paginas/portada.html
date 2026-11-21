@@ -62,23 +62,6 @@
                 <span class="ms" aria-hidden="true">login</span>{{ ocupado() ? 'Ingresando…' : 'Ingresar' }}</button>
             </form>
 
-            @if (demo().length) {
-              <details class="demo">
-                <summary><span class="ms" aria-hidden="true">key</span>Cuentas de prueba para la demostración</summary>
-                <ul>
-                  @for (c of demo(); track c.usuario) {
-                    <li>
-                      <button type="button" class="cuenta-demo" (click)="usarDemo(c)" [attr.aria-label]="'Usar la cuenta ' + c.usuario">
-                        <span class="ms" aria-hidden="true">{{ PERFIL_INFO[c.perfil].icono }}</span>
-                        <span><b>{{ c.usuario }}</b><small>{{ c.perfil }}: {{ PERFIL_INFO[c.perfil].descripcion }}</small></span>
-                        <span class="usar">Usar</span>
-                      </button>
-                    </li>
-                  }
-                </ul>
-                <p class="suave pequeno">Contraseña de todas las cuentas de prueba: <b>{{ CLAVE_PRUEBA }}</b></p>
-              </details>
-            }
           } @else {
             <form (ngSubmit)="crearCuenta()">
               <div class="campo">

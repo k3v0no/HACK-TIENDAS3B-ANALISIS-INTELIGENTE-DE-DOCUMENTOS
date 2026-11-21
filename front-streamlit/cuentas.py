@@ -1,7 +1,8 @@
 """Simulación de cuentas con contraseña y permisos por área.
 
 Las cuentas viven en `modules/usuarios.json` (local, ignorado por git) con la contraseña
-cifrada con PBKDF2. La primera vez se crean cuentas de prueba para la demo.
+cifrada con PBKDF2. La primera vez se crean las cuentas iniciales con su sal y su hash ya
+calculados: la contraseña no aparece en el código (el repositorio es público).
 
 En producción esto lo resuelve el back con un proveedor de identidad; aquí solo se simula
 para mostrar cómo cambia lo que ve cada área.
@@ -21,7 +22,6 @@ ARCHIVO = Path(os.environ.get("USUARIOS_FILE") or RAIZ / "modules" / "usuarios.j
 
 TIPO_TRABAJADOR = "Trabajador 3B"
 TIPO_ARRENDADOR = "Arrendador"
-CLAVE_PRUEBA = "demo3b"
 
 # Permisos: recurso.acción. Los perfiles son conjuntos de permisos (datos, no código).
 PERMISOS = {
@@ -52,14 +52,22 @@ DESCRIPCION_PERFIL = {
     "Auditor": "Consulta todo en solo lectura.",
 }
 
+# usuario, nombre, tipo, perfil, sal y hash PBKDF2 de la contraseña (igual que el front en Angular).
 _SEMILLA = [
-    ("admin", "Ana Torres", TIPO_TRABAJADOR, "Superusuario"),
-    ("juridico", "Luis Herrera", TIPO_TRABAJADOR, "Jurídico"),
-    ("analista", "Carla Méndez", TIPO_TRABAJADOR, "Analista de expansión"),
-    ("fiscal", "Jorge Ramos", TIPO_TRABAJADOR, "Fiscal"),
-    ("gestor", "Sofía Núñez", TIPO_TRABAJADOR, "Gestor de trámites"),
-    ("gerente", "Raúl Ortega", TIPO_TRABAJADOR, "Gerente"),
-    ("arrendador", "Patricia Lara", TIPO_ARRENDADOR, TIPO_ARRENDADOR),
+    ("admin", "Ana Torres", TIPO_TRABAJADOR, "Superusuario",
+     "27e2100ca2cc2540bf5aa31ce26f061a", "029b3bb5c9e16554a4e8ec27362a35121e526d38591d0c53ffb05e2a5cc14e15"),
+    ("juridico", "Luis Herrera", TIPO_TRABAJADOR, "Jurídico",
+     "2bc1f6ba14e9801df7f13c2c9856520c", "7259fdb39ddf6199f6ce31db2e0469d58f8f3c289ef67f07de53f43580c0e3a2"),
+    ("analista", "Carla Méndez", TIPO_TRABAJADOR, "Analista de expansión",
+     "3de0b8da01c1f1aa3f0a2722d2481873", "e1dcab100bf96d9551f0af022a2d8d4c964d790250cd9f3bb5ea807ce35bbf22"),
+    ("fiscal", "Jorge Ramos", TIPO_TRABAJADOR, "Fiscal",
+     "68bfc2b8a68a719fe0ae9047996cfe19", "d1d3067fb27f91e099eb4e79cc469bb48ee7c7277e353b335adc5afff9a3a3b3"),
+    ("gestor", "Sofía Núñez", TIPO_TRABAJADOR, "Gestor de trámites",
+     "65620e0561541a7e3028b58891f17249", "bb6886f78f9fa1959814126ae65f5a3805abc81ecd92d79673327144c015ba26"),
+    ("gerente", "Raúl Ortega", TIPO_TRABAJADOR, "Gerente",
+     "ea17841418de4da637dbcf7695a9295c", "500b73a9724d0abf14a5badcfde0bb63b12ae8d631e46c676a66dd4a55c850f4"),
+    ("arrendador", "Patricia Lara", TIPO_ARRENDADOR, TIPO_ARRENDADOR,
+     "20fedfeb277c6e30c850bbfd847176fd", "7bcb76833693286bbd267db09bba6b1827d95760a2f93a5930435fcd8241c0eb"),
 ]
 
 
@@ -75,7 +83,8 @@ def _nuevo_registro(usuario: str, nombre: str, tipo: str, perfil: str, clave: st
 
 def _cargar() -> dict[str, dict]:
     if not ARCHIVO.exists():
-        datos = {u: _nuevo_registro(u, n, t, p, CLAVE_PRUEBA) for u, n, t, p in _SEMILLA}
+        datos = {u: {"usuario": u, "nombre": n, "tipo": t, "perfil": p, "sal": sal, "hash": h, "activo": True}
+                 for u, n, t, p, sal, h in _SEMILLA}
         _guardar(datos)
         return datos
     return json.loads(ARCHIVO.read_text(encoding="utf-8"))
@@ -133,11 +142,6 @@ def cambiar_estado(usuario: str, activo: bool) -> None:
 
 def trabajadores() -> list[dict]:
     return [_publico(r) for r in _cargar().values() if r["tipo"] == TIPO_TRABAJADOR]
-
-
-def cuentas_de_prueba() -> list[dict]:
-    datos = _cargar()
-    return [_publico(datos[u]) for u, *_ in _SEMILLA if u in datos]
 
 
 def puede(cuenta: dict | None, permiso: str) -> bool:

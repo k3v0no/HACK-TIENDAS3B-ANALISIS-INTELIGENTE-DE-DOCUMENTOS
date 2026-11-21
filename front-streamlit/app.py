@@ -107,15 +107,6 @@ def _formulario(tipo: str) -> None:
                         except ValueError as e:
                             st.error(f"No se pudo crear la cuenta: {e}.")
 
-    with st.expander("Cuentas de prueba para la demostración", icon=":material/key:"):
-        filas = [c for c in cuentas.cuentas_de_prueba() if c["tipo"] == tipo]
-        lineas = "".join(
-            f'<li><span class="icono">{ui.icono("person")}</span><span><b>{escape(c["usuario"])}</b>'
-            f'<small>{escape(c["perfil"])}: {escape(cuentas.DESCRIPCION_PERFIL.get(c["perfil"], "Sube documentos y consulta su trámite."))}</small>'
-            f"</span></li>" for c in filas)
-        ui.html(f'<ul class="lista-docs">{lineas}</ul>')
-        st.caption(f"Contraseña de todas las cuentas de prueba: {cuentas.CLAVE_PRUEBA}")
-
 
 def _ruta() -> str:
     pasos = "".join(

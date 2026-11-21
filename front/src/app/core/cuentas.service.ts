@@ -1,7 +1,8 @@
 // Simulación de cuentas con contraseña y permisos por área.
 //
 // Las cuentas viven en el almacenamiento local del navegador, con la contraseña derivada con
-// PBKDF2 (Web Crypto). La sesión dura mientras la pestaña esté abierta. En producción esto lo
+// PBKDF2 (Web Crypto). Las cuentas iniciales se crean con su sal y su hash ya calculados: la
+// contraseña no aparece en el código (el repositorio es público). El equipo la comparte aparte. La sesión dura mientras la pestaña esté abierta. En producción esto lo
 // resuelve el back con un proveedor de identidad y verifica permisos en cada petición; aquí
 // solo se simula para mostrar cómo cambia lo que ve cada área.
 import { Injectable, computed, signal } from '@angular/core';
@@ -9,7 +10,6 @@ import { Injectable, computed, signal } from '@angular/core';
 export const TIPO_TRABAJADOR = 'Trabajador 3B';
 export const TIPO_ARRENDADOR = 'Arrendador';
 export type TipoCuenta = typeof TIPO_TRABAJADOR | typeof TIPO_ARRENDADOR;
-export const CLAVE_PRUEBA = 'demo3b';
 
 export type Permiso =
   | 'usuarios.admin' | 'expedientes.ver' | 'expedientes.cargar' | 'documentos.ver' | 'propietario.ver'
@@ -46,17 +46,27 @@ export const PERFIL_INFO: Record<string, { descripcion: string; icono: string }>
 export interface Cuenta { usuario: string; nombre: string; tipo: TipoCuenta; perfil: string; activo: boolean }
 interface Registro extends Cuenta { sal: string; hash: string }
 
-const SEMILLA: [string, string, TipoCuenta, string][] = [
-  ['admin', 'Ana Torres', TIPO_TRABAJADOR, 'Superusuario'],
-  ['juridico', 'Luis Herrera', TIPO_TRABAJADOR, 'Jurídico'],
-  ['analista', 'Carla Méndez', TIPO_TRABAJADOR, 'Analista de expansión'],
-  ['fiscal', 'Jorge Ramos', TIPO_TRABAJADOR, 'Fiscal'],
-  ['gestor', 'Sofía Núñez', TIPO_TRABAJADOR, 'Gestor de trámites'],
-  ['gerente', 'Raúl Ortega', TIPO_TRABAJADOR, 'Gerente'],
-  ['auditor', 'Elena Ríos', TIPO_TRABAJADOR, 'Auditor'],
-  ['arrendador', 'Patricia Lara', TIPO_ARRENDADOR, TIPO_ARRENDADOR],
+/** usuario, nombre, tipo, perfil, sal y hash PBKDF2 (SHA-256, 120 000 iteraciones) de la contraseña. */
+const SEMILLA: [string, string, TipoCuenta, string, string, string][] = [
+  ['admin', 'Ana Torres', TIPO_TRABAJADOR, 'Superusuario',
+    '27e2100ca2cc2540bf5aa31ce26f061a', '029b3bb5c9e16554a4e8ec27362a35121e526d38591d0c53ffb05e2a5cc14e15'],
+  ['juridico', 'Luis Herrera', TIPO_TRABAJADOR, 'Jurídico',
+    '2bc1f6ba14e9801df7f13c2c9856520c', '7259fdb39ddf6199f6ce31db2e0469d58f8f3c289ef67f07de53f43580c0e3a2'],
+  ['analista', 'Carla Méndez', TIPO_TRABAJADOR, 'Analista de expansión',
+    '3de0b8da01c1f1aa3f0a2722d2481873', 'e1dcab100bf96d9551f0af022a2d8d4c964d790250cd9f3bb5ea807ce35bbf22'],
+  ['fiscal', 'Jorge Ramos', TIPO_TRABAJADOR, 'Fiscal',
+    '68bfc2b8a68a719fe0ae9047996cfe19', 'd1d3067fb27f91e099eb4e79cc469bb48ee7c7277e353b335adc5afff9a3a3b3'],
+  ['gestor', 'Sofía Núñez', TIPO_TRABAJADOR, 'Gestor de trámites',
+    '65620e0561541a7e3028b58891f17249', 'bb6886f78f9fa1959814126ae65f5a3805abc81ecd92d79673327144c015ba26'],
+  ['gerente', 'Raúl Ortega', TIPO_TRABAJADOR, 'Gerente',
+    'ea17841418de4da637dbcf7695a9295c', '500b73a9724d0abf14a5badcfde0bb63b12ae8d631e46c676a66dd4a55c850f4'],
+  ['auditor', 'Elena Ríos', TIPO_TRABAJADOR, 'Auditor',
+    'b43393c046ba482afa7cc2929189c3a3', '97ca79cdd331f0a76567d6f629586338dc11ef30ef770f1eeeeac08c787b56ee'],
+  ['arrendador', 'Patricia Lara', TIPO_ARRENDADOR, TIPO_ARRENDADOR,
+    '20fedfeb277c6e30c850bbfd847176fd', '7bcb76833693286bbd267db09bba6b1827d95760a2f93a5930435fcd8241c0eb'],
 ];
-const LLAVE_CUENTAS = 'tiendas3b.cuentas.v1';
+// v2: cambió la contraseña de las cuentas iniciales; los navegadores con la versión anterior se vuelven a sembrar.
+const LLAVE_CUENTAS = 'tiendas3b.cuentas.v2';
 const LLAVE_SESION = 'tiendas3b.sesion';
 
 function hex(bytes: ArrayBuffer | Uint8Array): string {
@@ -109,10 +119,11 @@ export class CuentasService {
   private async sembrar(): Promise<void> {
     if (leer<Record<string, Registro>>(localStorage, LLAVE_CUENTAS)) return;
     const datos: Record<string, Registro> = {};
-    for (const [usuario, nombre, tipo, perfil] of SEMILLA) {
-      datos[usuario] = await this.nuevoRegistro(usuario, nombre, tipo, perfil, CLAVE_PRUEBA);
+    for (const [usuario, nombre, tipo, perfil, sal, hash] of SEMILLA) {
+      datos[usuario] = { usuario, nombre, tipo, perfil, activo: true, sal, hash };
     }
     escribir(localStorage, LLAVE_CUENTAS, datos);
+    try { localStorage.removeItem('tiendas3b.cuentas.v1'); } catch { /* sin almacenamiento */ }
   }
 
   private async nuevoRegistro(usuario: string, nombre: string, tipo: TipoCuenta, perfil: string, clave: string): Promise<Registro> {
@@ -169,6 +180,19 @@ export class CuentasService {
     return { cuenta: this.publico(datos[u]), temporal };
   }
 
+  /** Cambia el nombre o el área de un trabajador. El superusuario no cambia de área. */
+  actualizarTrabajador(usuario: string, cambios: { nombre: string; perfil: string }): Cuenta {
+    const datos = this.registros();
+    const r = datos[usuario];
+    if (!r || r.tipo !== TIPO_TRABAJADOR) throw new Error('no existe ese trabajador');
+    if (!cambios.nombre.trim()) throw new Error('escribe el nombre');
+    if (r.perfil !== 'Superusuario' && !AREAS.includes(cambios.perfil)) throw new Error('área no válida');
+    r.nombre = cambios.nombre.trim();
+    if (r.perfil !== 'Superusuario') r.perfil = cambios.perfil;
+    escribir(localStorage, LLAVE_CUENTAS, datos);
+    return this.publico(r);
+  }
+
   cambiarEstado(usuario: string, activo: boolean): void {
     const datos = this.registros();
     if (datos[usuario]) {
@@ -180,12 +204,6 @@ export class CuentasService {
   async trabajadores(): Promise<Cuenta[]> {
     await this.listo;
     return Object.values(this.registros()).filter((r) => r.tipo === TIPO_TRABAJADOR).map((r) => this.publico(r));
-  }
-
-  async cuentasDePrueba(tipo: TipoCuenta): Promise<Cuenta[]> {
-    await this.listo;
-    const datos = this.registros();
-    return SEMILLA.filter(([u, , t]) => t === tipo && datos[u]).map(([u]) => this.publico(datos[u]));
   }
 
   cerrarSesion(): void {

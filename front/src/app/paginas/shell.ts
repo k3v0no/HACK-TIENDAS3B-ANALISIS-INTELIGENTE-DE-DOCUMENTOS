@@ -82,7 +82,7 @@ interface Enlace { ruta: string; texto: string; icono: string }
     .contenido:focus { outline: none; }
     .barra-movil { display: none; }
     @media (max-width: 900px) {
-      .marco { grid-template-columns: 1fr; background: var(--fondo); }
+      .marco { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; background: var(--fondo); }
       .barra-movil { display: flex; justify-content: space-between; align-items: center; padding: .75rem 1rem;
         background: var(--superficie); border-bottom: 1px solid var(--borde); position: sticky; top: 0; z-index: 5; }
       .lateral { display: none; position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--borde); }

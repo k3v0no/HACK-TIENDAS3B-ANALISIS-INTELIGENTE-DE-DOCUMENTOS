@@ -1,0 +1,103 @@
+<app-encabezado icono="badge" titulo="Trabajadores"
+  [descripcion]="lista().length + ' cuentas del equipo de 3B, ' + activos() + ' activas. Agrupadas por área.'">
+  <a class="btn primario" routerLink="/admin/usuarios"><span class="ms" aria-hidden="true">person_add</span>Agregar trabajador</a>
+</app-encabezado>
+
+<div class="filtro envoltura-icono">
+  <span class="ms" aria-hidden="true">search</span>
+  <label class="sr-only" for="filtro-nombre">Filtrar por nombre</label>
+  <input id="filtro-nombre" class="entrada con-icono" type="search" placeholder="Filtrar por nombre o usuario"
+         [ngModel]="filtro()" (ngModelChange)="filtro.set($event)" autocomplete="off">
+</div>
+
+@if (aviso()) {
+  <div class="aviso exito" role="status"><span class="ms" aria-hidden="true">check_circle</span>
+    <span class="crece">{{ aviso() }}</span>
+    <button type="button" class="btn chico fantasma" (click)="aviso.set('')" aria-label="Cerrar aviso"><span class="ms" aria-hidden="true">close</span></button>
+  </div>
+}
+
+@if (filtro().trim()) {
+  <p class="suave pequeno conteo" aria-live="polite">{{ resultados() }} resultado{{ resultados() === 1 ? '' : 's' }} para «{{ filtro().trim() }}».</p>
+}
+
+<app-fluid-tabs class="pestanas" [pestanas]="pestanas()" [(activa)]="seccion" etiqueta="Tipos de usuario" controla="panel-trabajadores" />
+
+<section id="panel-trabajadores" role="tabpanel" [attr.aria-labelledby]="'tab-' + seccion()" class="panel">
+  @if (seccion() !== 'todos') {
+    <p class="descripcion suave"><span class="ms" aria-hidden="true">info</span><span><b>{{ seccion() }}:</b> {{ PERFIL_INFO[seccion()].descripcion }}</span></p>
+  }
+  <ul class="personas">
+    @for (t of visibles(); track t.usuario) {
+      <li class="tarjeta persona" [class.inactiva]="!t.activo">
+        <span class="avatar" aria-hidden="true">{{ t.nombre.charAt(0) }}</span>
+        <div class="datos">
+          <b>{{ t.nombre }}</b>
+          <span class="suave pequeno">@if (seccion() === 'todos') {{{ t.perfil }}, usuario} @else {Usuario} {{ t.usuario }}</span>
+        </div>
+        @if (!t.activo) { <span class="badge neutra"><span class="ms" aria-hidden="true">block</span>Desactivada</span> }
+        @if (t.usuario === yo()) {
+          <span class="badge neutra"><span class="ms" aria-hidden="true">person</span>Tu cuenta</span>
+        } @else {
+          <button type="button" class="btn chico" (click)="modificar(t)" [attr.aria-label]="'Modificar a ' + t.nombre">
+            <span class="ms" aria-hidden="true">edit</span>Modificar</button>
+        }
+      </li>
+    } @empty {
+      <li class="tarjeta vacio">
+        <span class="ms" aria-hidden="true">person_search</span>
+        @if (filtro().trim()) {
+          <p>Nadie en {{ seccion() === 'todos' ? 'el equipo' : seccion().toLowerCase() }} coincide con «{{ filtro().trim() }}». Revisa el nombre o borra el filtro.</p>
+          <button type="button" class="btn chico" (click)="filtro.set('')">Borrar filtro</button>
+        } @else {
+          <p>Todavía no hay trabajadores en {{ seccion().toLowerCase() }}.</p>
+          <a class="btn chico" routerLink="/admin/usuarios"><span class="ms" aria-hidden="true">person_add</span>Agregar trabajador</a>
+        }
+      </li>
+    }
+  </ul>
+</section>
+
+<dialog #dialogo class="dialogo" aria-labelledby="dialogo-titulo" (close)="alCerrar()">
+  @if (editando(); as t) {
+    <form (ngSubmit)="guardar()">
+      <header class="dialogo-cabeza">
+        <h2 id="dialogo-titulo">Modificar a {{ t.nombre }}</h2>
+        <button type="button" class="btn chico fantasma" (click)="cerrar()" aria-label="Cerrar"><span class="ms" aria-hidden="true">close</span></button>
+      </header>
+      <p class="suave pequeno">Usuario {{ t.usuario }}. El usuario no se puede cambiar.</p>
+
+      <div class="campo">
+        <label for="mod-nombre">Nombre completo</label>
+        <input id="mod-nombre" class="entrada" name="nombre" [(ngModel)]="nombre" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="mod-area">Área</label>
+        <div class="envoltura-icono selector">
+          <span class="ms" aria-hidden="true">{{ PERFIL_INFO[area].icono }}</span>
+          <select id="mod-area" class="entrada con-icono" name="area" [(ngModel)]="area" aria-describedby="mod-area-ayuda">
+            @for (a of areas; track a) { <option [value]="a">{{ a }}</option> }
+          </select>
+          <span class="ms flecha" aria-hidden="true">expand_more</span>
+        </div>
+        <small id="mod-area-ayuda">{{ PERFIL_INFO[area].descripcion }}</small>
+      </div>
+      @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">error</span>{{ error() }}</div> }
+      <div class="acciones">
+        <button type="button" class="btn" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="btn primario"><span class="ms" aria-hidden="true">save</span>Guardar cambios</button>
+      </div>
+
+      <section class="acceso" aria-labelledby="acceso-t">
+        <h3 id="acceso-t">Acceso a la cuenta</h3>
+        @if (t.activo) {
+          <p class="suave pequeno">Al desactivarla, {{ t.nombre }} ya no podrá ingresar. La cuenta no se borra y puedes activarla de nuevo.</p>
+          <button type="button" class="btn peligro" (click)="cambiarAcceso(false)"><span class="ms" aria-hidden="true">block</span>Desactivar cuenta</button>
+        } @else {
+          <p class="suave pequeno">La cuenta está desactivada: {{ t.nombre }} no puede ingresar.</p>
+          <button type="button" class="btn" (click)="cambiarAcceso(true)"><span class="ms" aria-hidden="true">check_circle</span>Activar cuenta</button>
+        }
+      </section>
+    </form>
+  }
+</dialog>

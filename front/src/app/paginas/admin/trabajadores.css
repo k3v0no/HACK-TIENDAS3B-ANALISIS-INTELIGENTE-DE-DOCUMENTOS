@@ -1,0 +1,38 @@
+:host { display: block; max-width: 72rem; }
+
+.filtro { max-width: 24rem; margin-bottom: 1rem; }
+.aviso { margin-bottom: 1rem; align-items: center; }
+.crece { flex: 1; }
+.conteo { margin: -.3rem 0 1rem; }
+
+.pestanas { margin-bottom: 1.1rem; }
+.descripcion { display: flex; gap: .45rem; align-items: center; margin-bottom: .8rem; font-size: .92rem; }
+.descripcion .ms { color: var(--rojo-accion); }
+
+.personas { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.persona { display: flex; gap: .9rem; align-items: center; padding: .8rem 1rem; flex-wrap: wrap; }
+.tarjeta + .tarjeta { margin-top: 0; }
+.avatar { width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--rojo-suave); color: var(--rojo-texto);
+  display: grid; place-items: center; font-weight: 700; flex: none; }
+.datos { flex: 1 1 12rem; min-width: 0; display: grid; gap: .1rem; }
+.persona.inactiva { background: #FAFBFB; border-style: dashed; box-shadow: none; }
+.persona.inactiva .avatar { background: var(--gris); color: var(--texto-suave); }
+
+.vacio { list-style: none; display: grid; justify-items: center; text-align: center; gap: .6rem; padding: 2rem; }
+.vacio > .ms { font-size: 2.2rem; color: var(--borde-fuerte); }
+
+/* ---------- Diálogo ---------- */
+.dialogo { width: min(30rem, calc(100vw - 2rem)); border: 1px solid var(--borde); border-radius: var(--radio-l);
+  padding: 1.4rem; box-shadow: var(--sombra-alta); color: var(--texto); }
+.dialogo::backdrop { background: rgba(4, 33, 31, .45); }
+.dialogo-cabeza { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.dialogo-cabeza h2 { font-size: 1.2rem; overflow-wrap: anywhere; }
+.dialogo > form > .suave { margin: .2rem 0 1.1rem; }
+.selector select { appearance: none; padding-right: 2.4rem; cursor: pointer; }
+.selector > .ms:first-child { color: var(--rojo-accion); }
+.selector .flecha { position: absolute; left: auto; right: .7rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--texto-suave); }
+.acciones { display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; }
+.acceso { margin-top: 1.4rem; padding-top: 1.1rem; border-top: 1px solid var(--borde); display: grid; gap: .6rem; justify-items: start; }
+.acceso h3 { font-size: 1rem; }
+.btn.peligro { color: var(--rojo-texto); border-color: #F3B8BE; }
+.btn.peligro:hover { background: var(--rojo-suave); border-color: var(--rojo-accion); }

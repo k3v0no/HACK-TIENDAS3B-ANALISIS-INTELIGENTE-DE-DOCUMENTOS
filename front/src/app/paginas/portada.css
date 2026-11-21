@@ -49,16 +49,6 @@
 .pestanas button { flex: 1; border: 0; background: transparent; padding: .45rem .8rem; border-radius: 999px; font-weight: 600; cursor: pointer; color: var(--texto-suave); }
 .pestanas button.activa { background: var(--superficie); color: var(--texto); box-shadow: var(--sombra); }
 
-.demo { margin-top: 1.2rem; border-top: 1px solid var(--borde); padding-top: .9rem; }
-.demo summary { cursor: pointer; font-weight: 600; font-size: .92rem; display: flex; gap: .4rem; align-items: center; }
-.demo ul { list-style: none; padding: 0; margin: .7rem 0; display: grid; gap: .35rem; }
-.cuenta-demo { width: 100%; display: flex; gap: .7rem; align-items: center; text-align: left; padding: .5rem .6rem;
-  border: 1px solid var(--borde); border-radius: var(--radio-s); background: var(--superficie); cursor: pointer; }
-.cuenta-demo:hover { border-color: var(--rojo-accion); }
-.cuenta-demo > .ms { color: var(--rojo-accion); }
-.cuenta-demo > span:nth-child(2) { flex: 1; min-width: 0; }
-.cuenta-demo small { display: block; color: var(--texto-suave); font-size: .8rem; }
-.usar { font-size: .82rem; font-weight: 600; color: var(--rojo-accion); }
 
 /* ---------- Secuencia del expediente ---------- */
 .ruta { text-align: center; max-width: 62rem; margin: 4rem auto 0; }

@@ -57,7 +57,7 @@ import { Encabezado } from '../../ui/ui';
     .cabeza h2 { font-size: 1.15rem; }
     .selector select { appearance: none; padding-right: 2.4rem; cursor: pointer; }
     .selector > .ms:first-child { color: var(--rojo-accion); }
-    .selector .flecha { position: absolute; right: .7rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--texto-suave); }
+    .selector .flecha { position: absolute; left: auto; right: .7rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--texto-suave); }
     .aviso { margin-bottom: 1rem; }
     .clave { font-family: var(--titulos); letter-spacing: .04em; }
   `,
