@@ -1,3 +1,4 @@
+@import 'leaflet/dist/leaflet.css';
 /*
  * Sistema visual — Tiendas 3B · Revisión de expedientes
  *
@@ -169,3 +170,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* Globo del mapa de inmuebles */
+.leaflet-container { font: inherit; }
+.leaflet-tooltip.tip-inmueble {
+  font: inherit; color: var(--texto); background: #fff; opacity: 1;
+  width: max-content; min-width: 16rem; max-width: min(24rem, 80vw); white-space: normal;
+  padding: 0; border: 1px solid var(--borde); border-radius: 12px; box-shadow: 0 10px 28px rgba(4, 33, 31, .22);
+}
+.leaflet-tooltip.tip-inmueble::before { border-top-color: #fff; }
+.tip-caja { padding: .85rem 1rem .7rem; display: grid; gap: .55rem; }
+.tip-titulo { font-weight: 700; font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
+.tip-estado { justify-self: start; color: #fff; font-weight: 700; font-size: .8rem; letter-spacing: .01em;
+  padding: .2rem .65rem; border-radius: 999px; }
+.tip-filas { display: grid; grid-template-columns: auto 1fr; gap: .25rem .9rem; margin: 0; font-size: .88rem; line-height: 1.35; }
+.tip-filas dt { color: var(--texto-suave); white-space: nowrap; }
+.tip-filas dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.tip-pie { border-top: 1px solid var(--borde); padding-top: .5rem; font-size: .78rem; color: var(--texto-suave); }

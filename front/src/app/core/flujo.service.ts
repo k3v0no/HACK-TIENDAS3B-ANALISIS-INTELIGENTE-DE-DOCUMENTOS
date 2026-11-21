@@ -11,7 +11,7 @@ import {
 import { Efecto, Notificacion, ValidezDocumento } from './modelos';
 import { PARAMETROS_BASE, Parametros, REGLAS } from './reglas-catalogo';
 
-const LLAVE = 'tiendas3b.flujo.v1';
+const LLAVE = 'tiendas3b.flujo.v3';
 
 export interface VersionReglas {
   version: number;

@@ -18,7 +18,7 @@ import { FlujoService } from './flujo.service';
 import { ArchivoRecibido, Corrida, DOC, EstadoBandeja, Expediente, TIPOS_DOCUMENTO, TipoDocumento } from './modelos';
 import { TIPO_BACK, traducir } from './traduccion';
 
-const LLAVE = 'tiendas3b.expedientes.v1';
+const LLAVE = 'tiendas3b.expedientes.v3';
 const API = '/api';
 
 // ---------------------------------------------------------------- IndexedDB mínimo

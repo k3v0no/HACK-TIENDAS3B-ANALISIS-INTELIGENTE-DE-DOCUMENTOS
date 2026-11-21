@@ -25,46 +25,137 @@
   </div>
 </header>
 
-<main class="pagina">
+<main>
+  <!-- Hero -->
   <section class="hero">
-    <h1>Revisión de expedientes de inmuebles</h1>
-    <p class="lead">El arrendador sube las escrituras, el predial, el alineamiento y el uso de suelo. El sistema lee los documentos,
-      compara sus datos y propone si el inmueble puede continuar, con la evidencia de cada observación.</p>
+    <div class="hero-interior">
+      <div class="hero-texto">
+        <p class="etiqueta"><span class="ms lleno" aria-hidden="true">hub</span>Sistema multiagente de revisión documental</p>
+        <h1>Del expediente al dictamen, <span class="acento">con evidencia</span>.</h1>
+        <p class="lead">Sube las escrituras, el predial, el alineamiento y el uso de suelo de un inmueble. El sistema los lee,
+          cruza sus datos y te dice si puede continuar, señalando en cada documento de dónde sale cada observación.</p>
+        <div class="acciones">
+          <button type="button" class="boton verde" (click)="elegir(accesos[0].tipo)">
+            <span class="ms" aria-hidden="true">real_estate_agent</span>Soy arrendador</button>
+          <button type="button" class="boton claro" (click)="elegir(accesos[1].tipo)">
+            <span class="ms" aria-hidden="true">badge</span>Soy del equipo 3B</button>
+        </div>
+        <ul class="confianza">
+          <li><span class="ms lleno" aria-hidden="true">verified</span>Hallazgos con la evidencia marcada</li>
+          <li><span class="ms lleno" aria-hidden="true">rule</span>Reglas explícitas, no una caja negra</li>
+          <li><span class="ms lleno" aria-hidden="true">lock</span>Los documentos se leen en equipo propio</li>
+        </ul>
+      </div>
+
+      <!-- Ilustración: un documento con anomalías marcadas y su dictamen -->
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hoja">
+          <div class="hoja-cabeza"><span class="sello"></span><span class="raya ancha"></span><span class="raya media"></span></div>
+          <span class="raya"></span><span class="raya"></span>
+          <span class="raya marcada roja"><i>1</i></span>
+          <span class="raya"></span><span class="raya corta"></span>
+          <span class="raya marcada ambar"><i>2</i></span>
+          <span class="raya"></span><span class="raya media"></span><span class="raya"></span>
+          <span class="raya corta"></span>
+        </div>
+        <div class="ficha">
+          <p class="ficha-rotulo">Dictamen</p>
+          <p class="ficha-estado"><span class="punto"></span>Requiere revisión</p>
+          <ul>
+            <li><i class="roja">1</i><span><b>Licencia vencida</b><small>Uso de suelo, página 1</small></span></li>
+            <li><i class="ambar">2</i><span><b>Superficie no coincide</b><small>Escrituras y predial</small></span></li>
+          </ul>
+          <p class="ficha-pie"><span class="ms" aria-hidden="true">plagiarism</span>Evidencia marcada en el documento</p>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section class="perfiles" aria-label="Perfiles">
-    @for (a of accesos; track a.tipo) {
-      <button type="button" class="perfil" (click)="elegir(a.tipo)">
-        <span class="icono" [class]="'icono ' + a.color"><span class="ms" aria-hidden="true">{{ a.icono }}</span></span>
-        <span class="titulo">{{ a.tipo }}</span>
-        <span class="para suave">{{ a.para }}</span>
-        <span class="puntos">
-          @for (p of a.puntos; track p) { <span><span class="ms lleno" aria-hidden="true">check_circle</span>{{ p }}</span> }
-        </span>
-        <span class="cta">Ingresar como {{ a.tipo.toLowerCase() }}<span class="ms" aria-hidden="true">arrow_forward</span></span>
-      </button>
-    }
-  </section>
+  <div class="pagina">
+    <!-- Cifras -->
+    <section class="cifras" aria-label="El sistema en cifras">
+      <div><b>4</b><span>tipos de documento por expediente</span></div>
+      <div><b>28</b><span>reglas de validación explícitas</span></div>
+      <div><b>3</b><span>resultados: cumple, requiere revisión o no cumple</span></div>
+      <div><b>8</b><span>perfiles, cada uno con su propia vista</span></div>
+    </section>
 
-  <section class="ruta" aria-labelledby="ruta-titulo">
-    <h2 id="ruta-titulo">Así se revisa un expediente</h2>
-    <p class="suave">Cada documento se lee en orden y sus datos se comparan entre sí. Cada observación cita el documento
-      y el fragmento de donde sale.</p>
-    <ol>
-      @for (t of tipos; track t; let i = $index) {
-        <li>
-          <span class="icono"><span class="ms" aria-hidden="true">{{ DOC[t].icono }}</span></span>
-          <span><b>{{ t }}</b><small>Paso {{ i + 1 }}</small></span>
+    <!-- Cómo se revisa -->
+    <section class="ruta" aria-labelledby="ruta-titulo">
+      <p class="sobretitulo">Cómo funciona</p>
+      <h2 id="ruta-titulo">Así se revisa un expediente</h2>
+      <p class="suave">Cada documento se lee en orden y sus datos se comparan entre sí. Cada observación cita el documento
+        y el fragmento de donde sale.</p>
+      <ol>
+        @for (t of tipos; track t; let i = $index) {
+          <li>
+            <span class="icono"><span class="ms" aria-hidden="true">{{ DOC[t].icono }}</span></span>
+            <span><b>{{ t }}</b><small>Paso {{ i + 1 }}</small></span>
+          </li>
+        }
+        <li class="final">
+          <span class="icono"><span class="ms" aria-hidden="true">gavel</span></span>
+          <span><b>Dictamen</b>
+            <span class="salidas"><app-estado valor="Cumple" /><app-estado valor="Requiere revisión" /><app-estado valor="No cumple" /></span>
+          </span>
         </li>
-      }
-      <li class="final">
-        <span class="icono"><span class="ms" aria-hidden="true">gavel</span></span>
-        <span><b>Dictamen</b>
-          <span class="salidas"><app-estado valor="Cumple" /><app-estado valor="Requiere revisión" /><app-estado valor="No cumple" /></span>
-        </span>
-      </li>
-    </ol>
-  </section>
+      </ol>
+    </section>
+
+    <!-- Ventajas -->
+    <section class="ventajas" aria-labelledby="ventajas-titulo">
+      <p class="sobretitulo">Por qué confiar en el resultado</p>
+      <h2 id="ventajas-titulo">Una revisión que se puede comprobar</h2>
+      <div class="rejilla">
+        <article>
+          <span class="icono-v"><span class="ms" aria-hidden="true">plagiarism</span></span>
+          <h3>Evidencia sobre el documento</h3>
+          <p>Cada anomalía aparece marcada en la página original, con su explicación al lado y la acción sugerida.</p>
+        </article>
+        <article>
+          <span class="icono-v"><span class="ms" aria-hidden="true">account_tree</span></span>
+          <h3>Agentes que se contrastan</h3>
+          <p>Unos agentes leen y extraen; otros verifican cada dato contra el texto. La recomendación sale de reglas, no de una opinión.</p>
+        </article>
+        <article>
+          <span class="icono-v"><span class="ms" aria-hidden="true">compare_arrows</span></span>
+          <h3>Cruce entre documentos</h3>
+          <p>Dirección, titular, superficie, número oficial y clave catastral se comparan entre los cuatro documentos.</p>
+        </article>
+        <article>
+          <span class="icono-v"><span class="ms" aria-hidden="true">groups</span></span>
+          <h3>Cada área, su vista</h3>
+          <p>Expansión, Jurídico, Trámites y Gerencia ven lo que les toca, deciden y dejan constancia de por qué.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- Accesos -->
+    <section class="accesos" aria-labelledby="accesos-titulo">
+      <p class="sobretitulo">Empieza aquí</p>
+      <h2 id="accesos-titulo">Elige cómo entrar</h2>
+      <div class="perfiles">
+        @for (a of accesos; track a.tipo) {
+          <button type="button" class="perfil" (click)="elegir(a.tipo)">
+            <span class="icono" [class]="'icono ' + a.color"><span class="ms" aria-hidden="true">{{ a.icono }}</span></span>
+            <span class="titulo">{{ a.tipo }}</span>
+            <span class="para suave">{{ a.para }}</span>
+            <span class="puntos">
+              @for (p of a.puntos; track p) { <span><span class="ms lleno" aria-hidden="true">check_circle</span>{{ p }}</span> }
+            </span>
+            <span class="cta">Ingresar como {{ a.tipo.toLowerCase() }}<span class="ms" aria-hidden="true">arrow_forward</span></span>
+          </button>
+        }
+      </div>
+    </section>
+  </div>
+
+  <footer class="pie">
+    <div class="pie-interior">
+      <span><b>Tiendas 3B</b> · Revisión de expedientes</span>
+      <span>Prototipo del Hackatón Tiendas 3B. El resultado es una recomendación inicial: la decisión final es del equipo legal.</span>
+    </div>
+  </footer>
 </main>
 
 <dialog #dialogo class="dialogo" aria-labelledby="login-titulo">

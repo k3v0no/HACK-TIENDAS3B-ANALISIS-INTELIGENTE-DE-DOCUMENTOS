@@ -19,6 +19,7 @@ export const MENU: Record<string, Vista[]> = {
   ],
   Jurídico: [
     { ruta: '/juridico/casos', texto: 'Casos jurídicos', icono: 'gavel', permiso: 'casos.juridicos' },
+    { ruta: '/juridico/mapa', texto: 'Mapa de inmuebles', icono: 'map', permiso: 'casos.juridicos' },
   ],
   'Gestor de trámites': [
     { ruta: '/gestor/tramites', texto: 'Trámites', icono: 'assignment', permiso: 'tramites.gestionar' },

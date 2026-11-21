@@ -26,6 +26,8 @@ export const routes: Routes = [
       // Jurídico
       { path: 'juridico/casos', canActivate: [requiere('casos.juridicos')], title: t('Casos jurídicos'),
         loadComponent: () => import('./paginas/juridico/casos').then((m) => m.Casos) },
+      { path: 'juridico/mapa', canActivate: [requiere('casos.juridicos')], title: t('Mapa de inmuebles'),
+        loadComponent: () => import('./paginas/juridico/mapa').then((m) => m.MapaJuridico) },
       { path: 'juridico/expediente/:id', canActivate: [requiere('casos.juridicos')], title: t('Comparador'),
         loadComponent: () => import('./paginas/juridico/expediente').then((m) => m.ExpedienteJuridico) },
 
