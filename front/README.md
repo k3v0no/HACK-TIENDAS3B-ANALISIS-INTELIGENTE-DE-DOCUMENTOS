@@ -53,8 +53,11 @@ En el código solo están su sal y su hash PBKDF2 (`src/app/core/cuentas.service
 Las cuentas, la sesión y la lista de expedientes se simulan en el navegador (almacenamiento
 local; contraseñas derivadas con PBKDF2). Para cambiar la contraseña de las cuentas iniciales hay
 que recalcular sal y hash en `SEMILLA` y subir la versión de `LLAVE_CUENTAS`, para que los
-navegadores que ya las tenían las vuelvan a crear. El back no tiene una ruta para listar expedientes, así
-que para la demo el arrendador y los trabajadores usan el mismo navegador. Los archivos subidos
+navegadores que ya las tenían las vuelvan a crear. Al abrir cualquier vista, el front trae
+del back los expedientes ya analizados que ese navegador no conoce (`GET /api/expedientes`), así que
+otro equipo también los ve. Las tareas, notas, correcciones y decisiones siguen siendo locales de
+cada navegador, y un expediente importado no se puede volver a analizar desde ahí porque sus
+archivos originales no viajan. Los archivos subidos
 se guardan en IndexedDB para poder reintentar el análisis.
 
 ## Estructura
