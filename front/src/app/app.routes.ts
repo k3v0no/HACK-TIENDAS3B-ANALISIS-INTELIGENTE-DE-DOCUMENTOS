@@ -57,6 +57,10 @@ export const routes: Routes = [
       { path: 'expediente/:id', canActivate: [requiere('hallazgos.ver')], title: t('Dictamen completo'),
         loadComponent: () => import('./paginas/comun/dictamen').then((m) => m.DictamenCompleto) },
 
+      // Revisión de un documento: página completa con las anomalías marcadas y la decisión de validez
+      { path: 'revision/:id/:doc', canActivate: [requiere('documentos.ver')], title: t('Revisión de documento'),
+        loadComponent: () => import('./paginas/comun/revision-documento').then((m) => m.RevisionDocumento) },
+
       // Superusuario
       { path: 'admin/usuarios', canActivate: [requiere('usuarios.admin')], title: t('Usuarios'),
         loadComponent: () => import('./paginas/admin/usuarios').then((m) => m.Usuarios) },

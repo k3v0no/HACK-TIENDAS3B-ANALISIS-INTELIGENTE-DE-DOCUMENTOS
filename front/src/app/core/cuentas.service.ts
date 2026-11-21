@@ -22,6 +22,7 @@ export type Permiso =
   // acciones por rol
   | 'expedientes.analizar' | 'inmuebles.gestionar' | 'pendientes.turnar' | 'casos.juridicos' | 'extraccion.corregir'
   | 'hallazgos.validar' | 'tramites.gestionar' | 'portafolio.ver' | 'negocio.decidir' | 'fichas.exportar'
+  | 'documentos.validar'
   | 'auditoria.ver' | 'reglas.configurar' | 'usuarios.admin'
   // arrendador
   | 'propios.cargar' | 'propios.ver';
@@ -31,12 +32,12 @@ const VER_TODO: Permiso[] = ['expedientes.ver', 'documentos.ver', 'propietario.v
   'regulatorio.ver', 'hallazgos.ver'];
 export const PERMISOS: Record<string, Permiso[]> = {
   Superusuario: ['usuarios.admin'],
-  'Analista de expansión': [...VER_TODO, 'expedientes.analizar', 'inmuebles.gestionar', 'pendientes.turnar'],
-  Jurídico: [...VER_TODO, 'casos.juridicos', 'extraccion.corregir', 'hallazgos.validar', 'pendientes.turnar'],
+  'Analista de expansión': [...VER_TODO, 'expedientes.analizar', 'inmuebles.gestionar', 'pendientes.turnar', 'documentos.validar'],
+  Jurídico: [...VER_TODO, 'casos.juridicos', 'extraccion.corregir', 'hallazgos.validar', 'pendientes.turnar', 'documentos.validar'],
   'Gestor de trámites': ['expedientes.ver', 'documentos.ver', 'inmueble.ver', 'regulatorio.ver', 'hallazgos.ver',
-    'tramites.gestionar'],
+    'tramites.gestionar', 'documentos.validar'],
   Gerente: ['expedientes.ver', 'documentos.ver', 'inmueble.ver', 'regulatorio.ver', 'hallazgos.ver', 'portafolio.ver',
-    'negocio.decidir', 'fichas.exportar'],
+    'negocio.decidir', 'fichas.exportar', 'documentos.validar'],
   Auditor: [...VER_TODO, 'auditoria.ver', 'fichas.exportar'],
   'Administrador de reglas': ['expedientes.ver', 'hallazgos.ver', 'reglas.configurar'],
   [TIPO_ARRENDADOR]: ['propios.cargar', 'propios.ver'],

@@ -2,6 +2,7 @@
   <app-cabecera-expediente [exp]="e" vista="Resumen ejecutivo para el comité" icono="insights" volver="/gerente/tablero" volverTexto="Tablero">
     <button type="button" class="btn chico" (click)="exportar()"><span class="ms" aria-hidden="true">download</span>Exportar ficha ejecutiva</button>
   </app-cabecera-expediente>
+  <app-revisar-documentos [exp]="e" />
 
   <section class="tres" aria-label="Estado del inmueble">
     <div class="dato-grande">

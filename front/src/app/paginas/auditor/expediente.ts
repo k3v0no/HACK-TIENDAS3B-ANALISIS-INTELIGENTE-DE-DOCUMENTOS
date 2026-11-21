@@ -7,13 +7,13 @@ import { ExpedientesService } from '../../core/expedientes.service';
 import { FlujoService } from '../../core/flujo.service';
 import { Corrida, Dato, Evento, Evidencia, Hallazgo } from '../../core/modelos';
 import { regla } from '../../core/reglas-catalogo';
-import { CabeceraExpediente, CajonEvidencia } from '../../ui/expediente-ui';
+import { CabeceraExpediente, RevisarDocumentos, CajonEvidencia } from '../../ui/expediente-ui';
 import { fecha } from '../../ui/ui';
 
 const ICONO_EVENTO: Record<Evento['tipo'], string> = {
   carga: 'upload_file', version: 'difference', analisis: 'play_circle', resultado: 'smart_toy', turnado: 'assignment_ind',
   solicitud: 'outgoing_mail', tarea: 'assignment', correccion: 'edit_note', validacion: 'gavel', decision: 'how_to_vote',
-  reglas: 'tune', exportacion: 'download',
+  reglas: 'tune', exportacion: 'download', validez: 'fact_check',
 };
 
 function esc(t: string): string {
@@ -22,7 +22,7 @@ function esc(t: string): string {
 
 @Component({
   selector: 'app-expediente-auditor',
-  imports: [RouterLink, CabeceraExpediente, CajonEvidencia],
+  imports: [RouterLink, CabeceraExpediente, RevisarDocumentos, CajonEvidencia],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './expediente.html',
   styleUrl: './expediente.css',

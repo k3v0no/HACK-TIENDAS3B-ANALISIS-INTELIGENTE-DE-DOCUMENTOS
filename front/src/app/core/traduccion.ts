@@ -78,11 +78,23 @@ export function traducir(exp: ExpedienteBack, declarados: Record<string, TipoDoc
           'Confirma que sea el documento correcto.',
       });
     }
+    // Documento que se leyó bien y no es ninguno de los cuatro (p. ej. una constancia de estudios).
+    const ajeno = doc.tipo === 'desconocido' && (doc.legible ?? true) ? (doc.tipo_detectado || 'otro tipo de documento') : null;
+    if (ajeno) {
+      validaciones.push({
+        id: `tipo-${doc.id}`, reglaId: 'G1', nombre: 'Tipo de documento', documento: doc.id, resultado: 'no_cumple',
+        efecto: 'Requiere revisión', evidencia: [], cruzada: false,
+        detalle: (declarado ? `Se subió como ${declarado.toLowerCase()}, pero ` : 'Este archivo ') +
+          `parece ser ${ajeno}, que no forma parte del expediente.`,
+      });
+    }
+    const noCorresponde = ajeno ? { declarado: declarado ?? '', pareceSer: ajeno }
+      : clasificado && declarado && clasificado !== declarado ? { declarado, pareceSer: clasificado.toLowerCase() } : undefined;
     const confs = doc.paginas.map((p) => p.confianza_ocr).filter((c): c is number => c !== null);
     documentos.push({
-      id: doc.id, tipo: clasificado ?? declarado ?? 'Desconocido', archivo: doc.archivo,
+      id: doc.id, tipo: ajeno && declarado ? declarado : clasificado ?? declarado ?? 'Desconocido', archivo: doc.archivo,
       paginas: doc.paginas.length, confianzaOcr: doc.confianza_ocr ?? promedio(confs), backId: exp.id,
-      legible: doc.legible ?? true, observaciones: doc.observaciones ?? [],
+      legible: doc.legible ?? true, observaciones: doc.observaciones ?? [], noCorresponde,
     });
     datos[doc.id] = doc.campos.map((c) => ({
       nombre: c.nombre, campo: nombreCampo(c.nombre, c.etiqueta), valor: c.valor, sustentado: c.sustentado ?? true,

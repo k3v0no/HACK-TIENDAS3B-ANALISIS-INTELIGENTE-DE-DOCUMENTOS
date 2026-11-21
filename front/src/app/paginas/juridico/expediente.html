@@ -2,6 +2,7 @@
   <app-cabecera-expediente [exp]="e" vista="Vista de Jurídico" icono="gavel" volver="/juridico/casos" volverTexto="Casos jurídicos">
     @if (d()) { <a class="btn chico" [routerLink]="['/expediente', e.id]"><span class="ms" aria-hidden="true">description</span>Dictamen completo</a> }
   </app-cabecera-expediente>
+  <app-revisar-documentos [exp]="e" />
 
   @if (d(); as dic) {
     @if (estadoVal(); as v) {

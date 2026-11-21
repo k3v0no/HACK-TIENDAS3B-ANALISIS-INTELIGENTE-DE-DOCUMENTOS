@@ -2,6 +2,7 @@
   <app-cabecera-expediente [exp]="e" vista="Vista de auditoría (solo lectura)" icono="policy" volver="/auditor/casos" volverTexto="Auditoría">
     <button type="button" class="btn chico" (click)="exportar()"><span class="ms" aria-hidden="true">download</span>Exportar historial</button>
   </app-cabecera-expediente>
+  <app-revisar-documentos [exp]="e" />
 
   <div class="rejilla">
     <!-- Línea de tiempo -->

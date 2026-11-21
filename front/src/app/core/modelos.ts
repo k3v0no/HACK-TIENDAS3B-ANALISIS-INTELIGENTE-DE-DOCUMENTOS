@@ -55,6 +55,8 @@ export interface Documento {
   confianzaOcr: number;
   legible: boolean;
   observaciones: string[];
+  /** Si el contenido no corresponde a lo declarado: qué parece ser en realidad. */
+  noCorresponde?: { declarado: string; pareceSer: string };
   backId: string; // id del expediente en el back, para pedir la imagen de página
 }
 
@@ -212,6 +214,34 @@ export interface ValidacionJuridica {
   corrida: number;
 }
 
+/** Decisión de una persona sobre la validez de un documento. Se conserva el historial. */
+export interface ValidezDocumento {
+  id: string;
+  exp: string;
+  documento: string; // id del documento en el dictamen
+  tipo: string; // tipo de documento, para mostrarlo sin abrir el dictamen
+  archivo: string;
+  estado: 'valido' | 'no_valido';
+  nota: string; // por qué se decidió así (interna)
+  mensajeArrendador: string; // lo que se le dice al arrendador; nunca detalles internos
+  autor: string;
+  perfil: string;
+  fecha: string;
+  corrida: number;
+}
+
+/** Aviso para el arrendador sobre lo que pasó con sus documentos. Sin hallazgos internos. */
+export interface Notificacion {
+  id: string;
+  exp: string;
+  fecha: string;
+  clase: 'exito' | 'alerta' | 'info';
+  titulo: string;
+  texto: string;
+  documento?: string; // tipo de documento al que se refiere
+  leida: boolean;
+}
+
 export interface DecisionNegocio {
   exp: string;
   valor: 'avanza' | 'espera' | 'descartado';
@@ -230,6 +260,6 @@ export interface Evento {
   actor: string; // nombre de la persona o «Sistema»
   perfil: string;
   tipo: 'carga' | 'version' | 'analisis' | 'resultado' | 'turnado' | 'solicitud' | 'tarea' | 'correccion'
-    | 'validacion' | 'decision' | 'reglas' | 'exportacion';
+    | 'validacion' | 'decision' | 'reglas' | 'exportacion' | 'validez';
   detalle: string;
 }

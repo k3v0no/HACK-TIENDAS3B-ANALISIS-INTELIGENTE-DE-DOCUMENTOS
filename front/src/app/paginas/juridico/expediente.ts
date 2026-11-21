@@ -9,7 +9,7 @@ import { FlujoService } from '../../core/flujo.service';
 import { Area, DOC, Evidencia, Hallazgo } from '../../core/modelos';
 import { causaDe, regla } from '../../core/reglas-catalogo';
 import { Visibilidad } from '../../core/visibilidad';
-import { CabeceraExpediente, Citas } from '../../ui/expediente-ui';
+import { CabeceraExpediente, RevisarDocumentos, Citas } from '../../ui/expediente-ui';
 import { fecha, pct } from '../../ui/ui';
 import { Visor } from '../../ui/visor';
 
@@ -22,7 +22,7 @@ const ESTADO_FILA = {
 
 @Component({
   selector: 'app-expediente-juridico',
-  imports: [RouterLink, CabeceraExpediente, Citas, Visor],
+  imports: [RouterLink, CabeceraExpediente, RevisarDocumentos, Citas, Visor],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './expediente.html',
   styleUrl: './expediente.css',

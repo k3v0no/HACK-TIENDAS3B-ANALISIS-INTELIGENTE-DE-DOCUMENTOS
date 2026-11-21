@@ -7,16 +7,17 @@ import { ExpedientesService } from '../../core/expedientes.service';
 import { ETIQUETA_ESTADO, FlujoService } from '../../core/flujo.service';
 import { DOC, Evidencia, TipoDocumento } from '../../core/modelos';
 import { Visibilidad } from '../../core/visibilidad';
-import { CabeceraExpediente, CajonEvidencia } from '../../ui/expediente-ui';
+import { CabeceraExpediente, RevisarDocumentos, CajonEvidencia } from '../../ui/expediente-ui';
 import { fecha } from '../../ui/ui';
 
 @Component({
   selector: 'app-expediente-gestor',
-  imports: [RouterLink, CabeceraExpediente, CajonEvidencia],
+  imports: [RouterLink, CabeceraExpediente, RevisarDocumentos, CajonEvidencia],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (exp(); as e) {
       <app-cabecera-expediente [exp]="e" vista="Vista del gestor de trámites" icono="assignment" volver="/gestor/permisos" volverTexto="Permisos y vigencias" />
+      <app-revisar-documentos [exp]="e" />
 
       <div class="rejilla">
         <section aria-labelledby="perm-t">

@@ -10,6 +10,7 @@ import { DOC, Evidencia, Resultado, TIPOS_DOCUMENTO, TipoDocumento } from '../..
 import { contarHallazgos } from '../../core/permisos-vista';
 import { Visibilidad } from '../../core/visibilidad';
 import { Estado, FilaDocumento, Fragmento, Glifo, ListaDocs, fecha, pct } from '../../ui/ui';
+import { RevisarDocumentos } from '../../ui/expediente-ui';
 import { Visor } from '../../ui/visor';
 
 const ORDEN_RESULTADO: Record<Resultado, number> = { no_cumple: 0, revisar: 1, cumple: 2 };
@@ -22,7 +23,7 @@ type Pestana = 'hallazgos' | 'datos' | 'validaciones';
 
 @Component({
   selector: 'app-dictamen',
-  imports: [NgTemplateOutlet, Estado, Glifo, ListaDocs, Fragmento, Visor],
+  imports: [NgTemplateOutlet, Estado, Glifo, ListaDocs, Fragmento, Visor, RevisarDocumentos],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dictamen.html',
   styleUrl: './dictamen.css',

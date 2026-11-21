@@ -7,7 +7,7 @@ import { ExpedientesService } from '../../core/expedientes.service';
 import { FlujoService } from '../../core/flujo.service';
 import { DecisionNegocio, Evidencia, USO_PREVISTO } from '../../core/modelos';
 import { causaDe } from '../../core/reglas-catalogo';
-import { CabeceraExpediente, CajonEvidencia } from '../../ui/expediente-ui';
+import { CabeceraExpediente, RevisarDocumentos, CajonEvidencia } from '../../ui/expediente-ui';
 import { fecha, pct } from '../../ui/ui';
 
 const DECISION = { avanza: 'Avanza', espera: 'En espera', descartado: 'Descartado' } as const;
@@ -18,7 +18,7 @@ function esc(t: string): string {
 
 @Component({
   selector: 'app-resumen',
-  imports: [RouterLink, CabeceraExpediente, CajonEvidencia],
+  imports: [RouterLink, CabeceraExpediente, RevisarDocumentos, CajonEvidencia],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './resumen.html',
   styleUrl: './resumen.css',

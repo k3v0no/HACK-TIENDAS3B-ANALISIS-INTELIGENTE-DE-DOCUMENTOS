@@ -3,6 +3,7 @@
     volver="/analista/inmuebles" volverTexto="Mis inmuebles">
     @if (d()) { <a class="btn chico" [routerLink]="['/expediente', e.id]"><span class="ms" aria-hidden="true">description</span>Dictamen completo</a> }
   </app-cabecera-expediente>
+  <app-revisar-documentos [exp]="e" />
 
   @if (bloqueo(); as b) {
     <section class="impide" aria-labelledby="impide-t">

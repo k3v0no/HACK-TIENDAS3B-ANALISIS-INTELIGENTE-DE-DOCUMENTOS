@@ -4,6 +4,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ExpedientesService } from '../core/expedientes.service';
+import { FlujoService } from '../core/flujo.service';
 import { Dictamen, Evidencia, Expediente, USO_PREVISTO } from '../core/modelos';
 import { Visibilidad } from '../core/visibilidad';
 import { Estado, Fragmento, pct } from './ui';
@@ -145,4 +146,51 @@ export class CajonEvidencia {
   protected doc(ev: Evidencia) {
     return this.dictamen()?.documentos.find((d) => d.id === ev.documento);
   }
+}
+
+/** Acceso a la revisión de cada documento: abre la página completa con las anomalías marcadas. */
+@Component({
+  selector: 'app-revisar-documentos',
+  imports: [RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    @if (visible.documentos() && docs().length) {
+      <section class="revisar" aria-label="Revisar documentos">
+        <span class="rotulo"><span class="ms" aria-hidden="true">fact_check</span>Revisar documento</span>
+        @for (d of docs(); track d.id) {
+          <a class="btn chico" [routerLink]="['/revision', exp().id, d.id]" [attr.aria-label]="'Revisar ' + d.tipo">
+            {{ d.tipo }}
+            @if (d.anomalias) { <span class="cuenta">{{ d.anomalias }}</span> }
+            @if (d.validez === 'valido') { <span class="ms ok" aria-label="Marcado válido">verified</span> }
+            @if (d.validez === 'no_valido') { <span class="ms mal" aria-label="Marcado no válido">block</span> }
+          </a>
+        }
+      </section>
+    }
+  `,
+  styles: `
+    :host { display: block; }
+    .revisar { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; margin-bottom: 1.1rem; padding: .7rem .9rem;
+      border: 1px solid var(--borde); border-radius: var(--radio); background: #fff; }
+    .rotulo { display: inline-flex; align-items: center; gap: .35rem; font-weight: 600; font-size: .9rem; margin-right: .3rem; }
+    .cuenta { display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding: 0 .3rem; border-radius: 999px;
+      background: var(--ambar-suave); color: var(--ambar-texto); font-size: .75rem; font-weight: 700; }
+    .ok { color: var(--verde-texto); font-size: 1.1rem; }
+    .mal { color: var(--rojo-texto); font-size: 1.1rem; }
+  `,
+})
+export class RevisarDocumentos {
+  protected readonly visible = inject(Visibilidad);
+  private readonly flujo = inject(FlujoService);
+  readonly exp = input.required<Expediente>();
+  protected readonly docs = computed(() => {
+    const e = this.exp(), d = e.dictamen;
+    if (!d) return [];
+    const validez = this.flujo.validez().filter((v) => v.exp === e.id);
+    return d.documentos.map((doc) => ({
+      id: doc.id, tipo: doc.tipo,
+      anomalias: d.hallazgos.filter((h) => h.evidencia.some((x) => x.documento === doc.id)).length,
+      validez: validez.filter((v) => v.documento === doc.id).at(-1)?.estado,
+    }));
+  });
 }

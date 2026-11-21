@@ -6,10 +6,10 @@ import { RouterLink } from '@angular/router';
 import { CuentasService } from '../../core/cuentas.service';
 import { ExpedientesService } from '../../core/expedientes.service';
 import { FlujoService } from '../../core/flujo.service';
-import { DOC, Expediente, TIPOS_DOCUMENTO, Tarea, TipoDocumento } from '../../core/modelos';
+import { DOC, Expediente, Notificacion, TIPOS_DOCUMENTO, Tarea, TipoDocumento, ValidezDocumento } from '../../core/modelos';
 import { Encabezado, Glifo, fecha, tamano } from '../../ui/ui';
 
-type EstadoDoc = 'falta' | 'recibido' | 'analisis' | 'procesado' | 'incidencia' | 'vencido';
+type EstadoDoc = 'falta' | 'recibido' | 'analisis' | 'procesado' | 'incidencia' | 'vencido' | 'aceptado' | 'rechazado';
 const ESTADO_DOC: Record<EstadoDoc, { texto: string; clase: string; icono: string }> = {
   falta: { texto: 'Falta', clase: 'neutra', icono: 'remove' },
   recibido: { texto: 'Recibido', clase: 'neutra', icono: 'inventory' },
@@ -17,6 +17,8 @@ const ESTADO_DOC: Record<EstadoDoc, { texto: string; clase: string; icono: strin
   procesado: { texto: 'Procesado', clase: 'cumple', icono: 'check' },
   incidencia: { texto: 'Con incidencia', clase: 'revisar', icono: 'error' },
   vencido: { texto: 'Vencido', clase: 'revisar', icono: 'schedule' },
+  aceptado: { texto: 'Aceptado', clase: 'cumple', icono: 'verified' },
+  rechazado: { texto: 'No aceptado', clase: 'no_cumple', icono: 'block' },
 };
 
 interface FilaDoc { tipo: TipoDocumento; estado: EstadoDoc; archivos: string; version: number; nota: string }
@@ -56,8 +58,23 @@ export class Tramites {
   protected readonly tramites = computed<Tramite[]>(() => {
     const usuario = this.cuentas.cuenta()?.usuario;
     const tareas = this.flujo.tareas();
-    return this.expedientes.lista().filter((e) => e.cuenta === usuario).map((e) => this.armar(e, tareas));
+    const validez = this.flujo.validez();
+    return this.expedientes.lista().filter((e) => e.cuenta === usuario).map((e) => this.armar(e, tareas, validez));
   });
+
+  private readonly propios = computed(() => new Set(this.tramites().map((t) => t.exp.id)));
+  /** Avisos de Tiendas 3B sobre los documentos de este arrendador, del más reciente al más antiguo. */
+  protected readonly avisos = computed<Notificacion[]>(() => this.flujo.notificacionesDe(this.propios()));
+  protected readonly sinLeer = computed(() => this.avisos().filter((n) => !n.leida).length);
+  protected readonly verTodos = signal(false);
+
+  protected tituloDe(exp: string): string {
+    return this.tramites().find((t) => t.exp.id === exp)?.titulo ?? exp;
+  }
+
+  protected marcarLeidos(): void {
+    this.flujo.marcarLeidas(this.propios());
+  }
 
   constructor() {
     this.expedientes.refrescar();
@@ -68,7 +85,7 @@ export class Tramites {
     inject(DestroyRef).onDestroy(() => clearInterval(reloj));
   }
 
-  private armar(e: Expediente, tareas: Tarea[]): Tramite {
+  private armar(e: Expediente, tareas: Tarea[], validez: ValidezDocumento[]): Tramite {
     const d = e.dictamen;
     const enProceso = ExpedientesService.enProceso(e);
     const filas: FilaDoc[] = TIPOS_DOCUMENTO.map((tipo) => {
@@ -81,18 +98,33 @@ export class Tramites {
       if (enProceso) return { tipo, estado: 'analisis', archivos, version, nota: 'Lo estamos leyendo.' };
       if (!analizado || !d) return { tipo, estado: 'recibido', archivos, version, nota: 'Lo recibimos; falta revisarlo.' };
       const doc = d.documentos.find((x) => x.tipo === tipo);
+      // La decisión de una persona de Tiendas 3B manda sobre la lectura automática.
+      const decision = validez.filter((v) => v.exp === e.id && v.documento === doc?.id).at(-1);
+      if (decision?.estado === 'no_valido') {
+        return { tipo, estado: 'rechazado', archivos, version,
+          nota: decision.mensajeArrendador || 'Tiendas 3B no pudo aceptar este documento: envía otro.' };
+      }
+      if (decision?.estado === 'valido') {
+        return { tipo, estado: 'aceptado', archivos, version, nota: decision.mensajeArrendador || 'Tiendas 3B lo revisó y lo aceptó.' };
+      }
       const regla = { 'Alineamiento y Número Oficial': 'A2', 'Uso de Suelo': 'U3', Predial: 'P2' }[tipo as string];
       if (regla && d.validaciones.some((v) => v.reglaId === regla && v.resultado === 'no_cumple')) {
         return { tipo, estado: 'vencido', archivos, version, nota: 'El documento ya no está vigente: envía uno actualizado.' };
       }
       if (doc && !doc.legible) return { tipo, estado: 'incidencia', archivos, version, nota: 'No se pudo leer bien: envía una copia más legible.' };
+      // Subió otra cosa en este lugar: se le dice qué parece ser y qué se necesita en realidad.
+      const ajeno = d.documentos.find((x) => x.noCorresponde?.declarado === tipo) ?? (doc?.noCorresponde ? doc : undefined);
+      if (ajeno?.noCorresponde) {
+        return { tipo, estado: 'incidencia', archivos, version,
+          nota: `El archivo que enviaste parece ser ${ajeno.noCorresponde.pareceSer}. Aquí necesitamos: ${DOC[tipo].que.toLowerCase()}.` };
+      }
       if (d.validaciones.some((v) => v.id === `tipo-${doc?.id}`)) {
         return { tipo, estado: 'incidencia', archivos, version, nota: 'Parece otro tipo de documento: revisa que sea el correcto.' };
       }
       return { tipo, estado: 'procesado', archivos, version, nota: 'Revisado.' };
     });
     const solicitudes = tareas.filter((t) => t.exp === e.id && t.estado === 'solicitado');
-    const pendientesDoc = filas.some((f) => f.estado !== 'procesado');
+    const pendientesDoc = filas.some((f) => f.estado !== 'procesado' && f.estado !== 'aceptado');
     return {
       exp: e, titulo: ExpedientesService.titulo(e), filas, solicitudes,
       etapa: d && !enProceso && !pendientesDoc && !solicitudes.length ? 2 : 1,

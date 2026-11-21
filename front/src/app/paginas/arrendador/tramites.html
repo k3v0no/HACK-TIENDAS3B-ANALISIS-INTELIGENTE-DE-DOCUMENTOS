@@ -3,6 +3,29 @@
 
 @if (aviso()) { <div class="aviso exito" role="status"><span class="ms" aria-hidden="true">check_circle</span>{{ aviso() }}</div> }
 
+@if (avisos().length) {
+  <section class="tarjeta avisos" aria-labelledby="avisos-t">
+    <div class="avisos-cabeza">
+      <h2 id="avisos-t"><span class="ms" aria-hidden="true">notifications</span>Avisos de Tiendas 3B
+        @if (sinLeer()) { <span class="nuevos">{{ sinLeer() }} nuevo{{ sinLeer() === 1 ? '' : 's' }}</span> }</h2>
+      @if (sinLeer()) { <button type="button" class="btn chico" (click)="marcarLeidos()"><span class="ms" aria-hidden="true">done_all</span>Marcar como leídos</button> }
+    </div>
+    <ul>
+      @for (n of (verTodos() ? avisos() : avisos().slice(0, 4)); track n.id) {
+        <li [class]="'aviso-fila ' + n.clase" [class.sin-leer]="!n.leida">
+          <span class="ms" aria-hidden="true">{{ n.clase === 'exito' ? 'check_circle' : n.clase === 'alerta' ? 'error' : 'info' }}</span>
+          <span><b>{{ n.titulo }}</b>
+            <span class="texto">{{ n.texto }}</span>
+            <small class="suave">{{ tituloDe(n.exp) }} · {{ fecha(n.fecha) }}</small></span>
+        </li>
+      }
+    </ul>
+    @if (avisos().length > 4) {
+      <button type="button" class="btn chico fantasma" (click)="verTodos.set(!verTodos())">{{ verTodos() ? 'Ver menos' : 'Ver los ' + avisos().length + ' avisos' }}</button>
+    }
+  </section>
+}
+
 @for (t of tramites(); track t.exp.id) {
   <article class="tarjeta tramite">
     <div class="cabeza">

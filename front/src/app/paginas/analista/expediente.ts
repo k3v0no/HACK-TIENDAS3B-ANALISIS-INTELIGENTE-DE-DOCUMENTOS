@@ -9,7 +9,7 @@ import { ETIQUETA_ESTADO, FlujoService } from '../../core/flujo.service';
 import { ArchivoRecibido, DOC, Dato, Evidencia, Hallazgo, TIPOS_DOCUMENTO, Tarea, TipoDocumento } from '../../core/modelos';
 import { causaDe, regla } from '../../core/reglas-catalogo';
 import { Visibilidad } from '../../core/visibilidad';
-import { CabeceraExpediente, CajonEvidencia } from '../../ui/expediente-ui';
+import { CabeceraExpediente, RevisarDocumentos, CajonEvidencia } from '../../ui/expediente-ui';
 import { pct } from '../../ui/ui';
 
 type Accion = 'turnar' | 'pedir' | 'aclarar';
@@ -17,7 +17,7 @@ interface CampoFicha { etiqueta: string; valor: string | null; normalizado: stri
 
 @Component({
   selector: 'app-expediente-analista',
-  imports: [RouterLink, CabeceraExpediente, CajonEvidencia],
+  imports: [RouterLink, CabeceraExpediente, RevisarDocumentos, CajonEvidencia],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './expediente.html',
   styleUrl: './expediente.css',

@@ -125,7 +125,8 @@ export class Shell {
     if (area) return this.flujo.abiertas().filter((t) => t.area === area).length;
     if (this.esArrendador()) {
       const propios = new Set(this.expedientes.lista().filter((e) => e.cuenta === this.cuenta()?.usuario).map((e) => e.id));
-      return this.flujo.abiertas().filter((t) => t.estado === 'solicitado' && propios.has(t.exp)).length;
+      return this.flujo.abiertas().filter((t) => t.estado === 'solicitado' && propios.has(t.exp)).length
+        + this.flujo.notificaciones().filter((n) => !n.leida && propios.has(n.exp)).length;
     }
     return 0;
   });

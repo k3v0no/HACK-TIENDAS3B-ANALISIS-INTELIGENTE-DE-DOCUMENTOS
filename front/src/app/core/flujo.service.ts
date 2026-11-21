@@ -8,7 +8,7 @@ import { CuentasService } from './cuentas.service';
 import {
   Area, Correccion, DecisionNegocio, EstadoTarea, Evento, Nota, Tarea, TipoDocumento, ValidacionJuridica,
 } from './modelos';
-import { Efecto } from './modelos';
+import { Efecto, Notificacion, ValidezDocumento } from './modelos';
 import { PARAMETROS_BASE, Parametros, REGLAS } from './reglas-catalogo';
 
 const LLAVE = 'tiendas3b.flujo.v1';
@@ -25,6 +25,8 @@ export interface VersionReglas {
 }
 
 interface Estado {
+  validez: ValidezDocumento[];
+  notificaciones: Notificacion[];
   tareas: Tarea[];
   correcciones: Correccion[];
   validaciones: ValidacionJuridica[];
@@ -35,6 +37,7 @@ interface Estado {
 
 function inicial(): Estado {
   return {
+    validez: [], notificaciones: [],
     tareas: [], correcciones: [], validaciones: [], decisiones: [], eventos: [],
     reglas: [{
       version: 1, fecha: '2026-11-21T09:00:00.000Z', autor: 'Sistema', motivo: 'Catálogo inicial del back',
@@ -53,6 +56,8 @@ export class FlujoService {
   private readonly cuentas = inject(CuentasService);
   private readonly estado = signal<Estado>(this.leer());
 
+  readonly validez = computed(() => this.estado().validez);
+  readonly notificaciones = computed(() => this.estado().notificaciones);
   readonly tareas = computed(() => this.estado().tareas);
   readonly correcciones = computed(() => this.estado().correcciones);
   readonly validaciones = computed(() => this.estado().validaciones);
@@ -108,6 +113,7 @@ export class FlujoService {
     };
     delete (nueva as { nota?: string }).nota;
     this.cambiar((e) => e.tareas.push(nueva));
+    if (nueva.estado === 'solicitado') this.avisarSolicitud(nueva);
     const verbo = t.tipo === 'turnado' ? 'Turnó a' : t.tipo === 'solicitud_documento' ? 'Pidió un documento a' : 'Envió a';
     this.registrar(t.exp, t.tipo === 'solicitud_documento' ? 'solicitud' : 'turnado', `${verbo} ${t.area}: ${t.titulo}`);
     return nueva;
@@ -122,11 +128,20 @@ export class FlujoService {
       Object.assign(tarea, cambios);
       if (nota) tarea.notas.push({ fecha: new Date().toISOString(), autor: q.actor, texto: nota } as Nota);
     });
+    if (tarea && cambios.estado === 'solicitado') this.avisarSolicitud(tarea);
     if (tarea) {
       const partes = [cambios.estado ? `estado «${ETIQUETA_ESTADO[cambios.estado]}»` : '', cambios.area ? `turnada a ${cambios.area}` : '',
         cambios.seguimiento ? `seguimiento el ${cambios.seguimiento}` : '', cambios.documento ? `documento requerido: ${cambios.documento}` : '', nota ? `nota: ${nota}` : ''].filter(Boolean);
       this.registrar(tarea.exp, 'tarea', `${tarea.titulo}: ${partes.join(', ') || 'actualizada'}`);
     }
+  }
+
+  private avisarSolicitud(t: Tarea): void {
+    this.notificar({
+      exp: t.exp, documento: t.documento, clase: 'alerta',
+      titulo: t.documento ? `Tiendas 3B te pide un documento: ${t.documento.toLowerCase()}` : 'Tiendas 3B te pide una aclaración',
+      texto: t.solicitud || t.titulo,
+    });
   }
 
   tareasDe(exp: string): Tarea[] {
@@ -153,6 +168,46 @@ export class FlujoService {
     const afectadas = this.tareas().filter((t) => t.exp === exp && t.estado === 'recibido');
     if (!afectadas.length) return;
     this.cambiar((e) => e.tareas.filter((t) => afectadas.some((a) => a.id === t.id)).forEach((t) => { t.estado = 'en_verificacion'; }));
+  }
+
+  // ---------------------------------------------------------------- validez de documentos
+
+  /** Registra si un documento se acepta o no. Avisa al arrendador con el mensaje pensado para él. */
+  marcarValidez(v: Omit<ValidezDocumento, 'id' | 'autor' | 'perfil' | 'fecha'>): void {
+    const q = this.quien();
+    this.cambiar((e) => e.validez.push({ ...v, id: id(), autor: q.actor, perfil: q.perfil, fecha: new Date().toISOString() }));
+    const valido = v.estado === 'valido';
+    this.registrar(v.exp, 'validez', `Marcó ${v.tipo.toLowerCase()} («${v.archivo}») como ${valido ? 'válido' : 'no válido'}. Motivo: ${v.nota}`);
+    this.notificar({
+      exp: v.exp, documento: v.tipo, clase: valido ? 'exito' : 'alerta',
+      titulo: valido ? `Aceptamos tu documento de ${v.tipo.toLowerCase()}` : `No pudimos aceptar tu documento de ${v.tipo.toLowerCase()}`,
+      texto: v.mensajeArrendador || (valido ? 'Tiendas 3B lo revisó y lo dio por bueno.'
+        : 'Tiendas 3B lo revisó y necesita que envíes otro. Puedes sustituirlo desde este trámite.'),
+    });
+  }
+
+  /** Última decisión de validez de un documento, si la hay. */
+  validezDe(exp: string, documento: string): ValidezDocumento | undefined {
+    return this.validez().filter((v) => v.exp === exp && v.documento === documento).at(-1);
+  }
+
+  historialValidez(exp: string, documento: string): ValidezDocumento[] {
+    return this.validez().filter((v) => v.exp === exp && v.documento === documento);
+  }
+
+  // ---------------------------------------------------------------- avisos al arrendador
+
+  notificar(n: Omit<Notificacion, 'id' | 'fecha' | 'leida'>): void {
+    this.cambiar((e) => e.notificaciones.push({ ...n, id: id(), fecha: new Date().toISOString(), leida: false }));
+  }
+
+  notificacionesDe(exps: Set<string>): Notificacion[] {
+    return this.notificaciones().filter((n) => exps.has(n.exp)).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }
+
+  marcarLeidas(exps: Set<string>): void {
+    if (!this.notificaciones().some((n) => exps.has(n.exp) && !n.leida)) return;
+    this.cambiar((e) => e.notificaciones.forEach((n) => { if (exps.has(n.exp)) n.leida = true; }));
   }
 
   // ---------------------------------------------------------------- jurídico

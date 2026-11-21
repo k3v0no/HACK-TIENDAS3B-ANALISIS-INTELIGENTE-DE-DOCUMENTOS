@@ -25,6 +25,7 @@ export interface DocumentoBack {
   id: string;
   archivo: string;
   tipo: TipoBack;
+  tipo_detectado?: string | null; // qué parece ser, si no es ninguno de los cuatro
   legible?: boolean;
   confianza_ocr?: number | null;
   observaciones?: string[];
@@ -57,11 +58,26 @@ export interface DictamenBack {
   }[];
 }
 
+/** Fila de GET /expedientes: sin documentos ni dictamen. */
+export interface ResumenBack {
+  id: string;
+  estado: 'en_cola' | 'procesando' | 'listo' | 'error';
+  creado: string;
+  origen: string | null;
+  cuenta: string | null;
+  titulo: string;
+  recomendacion: 'Cumple' | 'Requiere revisión' | 'No cumple' | null;
+  documentos: number;
+}
+
 export interface ExpedienteBack {
   id: string;
   estado: 'en_cola' | 'procesando' | 'listo' | 'error';
   etapa: string;
   error: string | null;
+  creado?: string;
+  origen?: string | null;
+  cuenta?: string | null;
   documentos: DocumentoBack[];
   dictamen: DictamenBack | null;
 }

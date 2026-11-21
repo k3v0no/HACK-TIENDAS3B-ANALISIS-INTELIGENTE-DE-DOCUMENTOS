@@ -8,13 +8,15 @@
 //   3. `sincronizar` consulta GET /api/expedientes/{id}; cuando el back termina, traduce el
 //      dictamen y lo guarda en la corrida. Las corridas anteriores se conservan para la auditoría.
 //
-// Límite del prototipo: el back no tiene una ruta para listar expedientes, así que la lista
-// vive en este navegador. Para la demo, el arrendador y los trabajadores usan el mismo navegador.
+// La lista de trabajo vive en este navegador, pero `importarDelBack` trae los expedientes que el
+// back ya tiene analizados (GET /api/expedientes), así que otro navegador también los ve. Lo que
+// no viaja son los archivos originales ni las tareas, notas y decisiones, que siguen siendo locales.
 import { Injectable, inject, signal } from '@angular/core';
-import { ExpedienteBack } from './back';
+import { ExpedienteBack, ResumenBack } from './back';
+import { CuentasService } from './cuentas.service';
 import { FlujoService } from './flujo.service';
-import { ArchivoRecibido, Corrida, EstadoBandeja, Expediente, TIPOS_DOCUMENTO, TipoDocumento } from './modelos';
-import { traducir } from './traduccion';
+import { ArchivoRecibido, Corrida, DOC, EstadoBandeja, Expediente, TIPOS_DOCUMENTO, TipoDocumento } from './modelos';
+import { TIPO_BACK, traducir } from './traduccion';
 
 const LLAVE = 'tiendas3b.expedientes.v1';
 const API = '/api';
@@ -82,10 +84,13 @@ function migrar(e: Expediente): Expediente {
 @Injectable({ providedIn: 'root' })
 export class ExpedientesService {
   private readonly flujo = inject(FlujoService);
+  private readonly cuentas = inject(CuentasService);
   private readonly _lista = signal<Expediente[]>(this.leer());
   readonly lista = this._lista.asReadonly();
   readonly conectado = signal<boolean | null>(null);
   private ultimaRevision = 0;
+  private ultimaImportacion = 0;
+  private importando = false;
 
   // ---------------------------------------------------------------- registro local
 
@@ -114,10 +119,67 @@ export class ExpedientesService {
     return exp;
   }
 
-  /** Vuelve a leer la lista (otra pestaña pudo cambiarla). */
+  /** Vuelve a leer la lista (otra pestaña pudo cambiarla) y trae del back lo que falte. */
   refrescar(): void {
     this._lista.set(this.leer());
     this.flujo.refrescar();
+    void this.importarDelBack();
+  }
+
+  /** Cabecera con el usuario de la sesión, para que la bitácora del back sepa quién actúa. */
+  private cabeceras(): Record<string, string> {
+    const usuario = this.cuentas.cuenta()?.usuario;
+    return usuario ? { 'X-Usuario': encodeURIComponent(usuario) } : {};
+  }
+
+  /**
+   * Trae del back los expedientes ya analizados que este navegador no conoce (p. ej. cargados
+   * desde otro equipo). Devuelve cuántos agregó. No se repite más de una vez cada 15 segundos.
+   */
+  async importarDelBack(): Promise<number> {
+    if (this.importando || Date.now() - this.ultimaImportacion < 15_000) return 0;
+    this.importando = true;
+    this.ultimaImportacion = Date.now();
+    let agregados = 0;
+    try {
+      const r = await fetch(`${API}/expedientes`, { headers: this.cabeceras(), signal: AbortSignal.timeout(10_000) });
+      if (!r.ok) return 0;
+      const resumenes = (await r.json()) as ResumenBack[];
+      const conocidos = new Set(this.leer().flatMap((e) => [e.back?.id, ...e.corridas.map((c) => c.backId)]));
+      for (const fila of resumenes.filter((x) => x.estado === 'listo' && !conocidos.has(x.id)).reverse()) {
+        const rd = await fetch(`${API}/expedientes/${fila.id}`, { headers: this.cabeceras(), signal: AbortSignal.timeout(15_000) });
+        if (!rd.ok) continue;
+        const back = (await rd.json()) as ExpedienteBack;
+        if (!back.dictamen) continue;
+        const lista = this.leer();
+        if (lista.some((e) => e.back?.id === back.id)) continue; // otra pestaña lo importó mientras tanto
+        const dictamen = traducir(back, {});
+        const fecha = fila.creado || new Date().toISOString();
+        const archivos: ArchivoRecibido[] = back.documentos.flatMap((d) => {
+          const tipo = TIPO_BACK[d.tipo];
+          return tipo ? [{ tipo, nombre: d.archivo, tamano: 0, version: 1, vigente: true, fecha }] : [];
+        });
+        const exp: Expediente = {
+          id: `EXP-${back.id.slice(0, 8).toUpperCase()}`,
+          origen: fila.origen === 'arrendador' ? 'arrendador' : '3b',
+          cuenta: fila.cuenta ?? '',
+          fecha, archivos,
+          back: { id: back.id, estado: back.estado, etapa: back.etapa, error: back.error, declarados: {} },
+          corridas: [{
+            n: 1, fecha, backId: back.id, reglasVersion: this.flujo.reglasVigentes().version, motivo: 'Primera revisión',
+            archivos: archivos.map((a) => ({ tipo: a.tipo, nombre: a.nombre, version: 1 })), dictamen,
+          }],
+          dictamen,
+        };
+        this.guardar([exp, ...lista]);
+        this.flujo.registrar(exp.id, 'resultado', `Recuperado del servicio de análisis: ${dictamen.recomendacion} ` +
+          `(confianza ${Math.round(dictamen.confianza * 100)} %, ${dictamen.hallazgos.length} hallazgos)`, true);
+        agregados++;
+      }
+    } catch { /* sin conexión con el back: se reintenta en la siguiente visita */ } finally {
+      this.importando = false;
+    }
+    return agregados;
   }
 
   obtener(id: string): Expediente | undefined {
@@ -230,9 +292,14 @@ export class ExpedientesService {
     if (!guardados.length) throw new Error('los archivos de este expediente ya no están en este navegador');
     const form = new FormData();
     for (const a of guardados) form.append('archivos', await comoPdf(a));
+    const registro = this.leer().find((e) => e.id === id);
+    if (registro) {
+      form.append('origen', registro.origen);
+      if (registro.cuenta) form.append('cuenta', registro.cuenta);
+    }
     let r: Response;
     try {
-      r = await fetch(`${API}/expedientes`, { method: 'POST', body: form });
+      r = await fetch(`${API}/expedientes`, { method: 'POST', body: form, headers: this.cabeceras() });
     } catch {
       throw new Error('no hay conexión con el back');
     }
@@ -259,7 +326,7 @@ export class ExpedientesService {
     const actual = this.leer().find((e) => e.id === id);
     if (!actual?.back || !ExpedientesService.enProceso(actual)) return actual;
     try {
-      const r = await fetch(`${API}/expedientes/${actual.back.id}`, { signal: AbortSignal.timeout(10_000) });
+      const r = await fetch(`${API}/expedientes/${actual.back.id}`, { headers: this.cabeceras(), signal: AbortSignal.timeout(10_000) });
       if (!r.ok) return actual;
       const back = (await r.json()) as ExpedienteBack;
       let terminado: Corrida | undefined;
@@ -276,6 +343,19 @@ export class ExpedientesService {
         this.flujo.registrar(id, 'resultado', `Corrida ${terminado.n}: ${terminado.dictamen.recomendacion} ` +
           `(confianza ${Math.round(terminado.dictamen.confianza * 100)} %, ${terminado.dictamen.hallazgos.length} hallazgos)`, true);
         this.flujo.analisisTerminado(id);
+        this.flujo.notificar({ exp: id, clase: 'info', titulo: 'Terminamos de leer tus documentos',
+          texto: 'Tiendas 3B ya los está revisando. Aquí verás si alguno necesita sustituirse.' });
+        for (const doc of terminado.dictamen.documentos) {
+          const nc = doc.noCorresponde;
+          const esperado = TIPOS_DOCUMENTO.find((t) => t === nc?.declarado);
+          if (!nc || !esperado) continue;
+          this.flujo.notificar({
+            exp: id, clase: 'alerta', documento: esperado,
+            titulo: `El archivo de ${esperado.toLowerCase()} no es el que necesitamos`,
+            texto: `«${doc.archivo}» parece ser ${nc.pareceSer}. Lo que necesitamos es: ${DOC[esperado].que.toLowerCase()}. ` +
+              'Puedes sustituirlo desde este trámite.',
+          });
+        }
       } else if (back.estado === 'error') {
         this.flujo.registrar(id, 'resultado', `El análisis no terminó: ${back.error ?? 'error sin detalle'}`, true);
       }
