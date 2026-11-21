@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     api_key: str = ""
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     data_dir: Path = BASE_DIR / "data"
+    # Vacía = SQLite en data/expedientes.db. Ejemplo: postgresql+psycopg://usuario:clave@host/base
+    database_url: str = ""
 
     deepseek_api_key: str = ""
     llm_model: str = "deepseek-chat"

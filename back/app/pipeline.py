@@ -43,9 +43,12 @@ def procesar(expediente_id: str) -> None:
             "Análisis terminado" if expediente.dictamen else "Lectura terminada; análisis pendiente"
         )
         storage.guardar(expediente)
+        resultado = expediente.dictamen.recomendacion if expediente.dictamen else "sin dictamen"
+        storage.registrar("analisis_terminado", "sistema", expediente_id, f"Recomendación: {resultado}")
     except Exception as exc:
         # Se registra solo el tipo de error: el mensaje podría arrastrar texto de los documentos.
         log.error("Expediente %s falló: %s", expediente_id, type(exc).__name__)
         expediente.estado = "error"
         expediente.error = f"No se pudo procesar el expediente ({type(exc).__name__})"
         storage.guardar(expediente)
+        storage.registrar("analisis_error", "sistema", expediente_id, type(exc).__name__)
