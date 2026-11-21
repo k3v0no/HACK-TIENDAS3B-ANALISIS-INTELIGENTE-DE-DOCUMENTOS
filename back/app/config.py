@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     deepseek_api_key: str = ""
     llm_model: str = "deepseek-chat"
+    llm_base_url: str = ""
 
     ocr_device: str = "gpu"
     ocr_dpi: int = 200
@@ -22,6 +23,10 @@ class Settings(BaseSettings):
     ocr_unwarp: bool = True
 
     max_pdf_mb: int = 100
+
+    # Fecha contra la que se evalúan vigencias (AAAA-MM-DD). Vacía = hoy.
+    fecha_referencia: str = ""
+    llm_concurrencia: int = 4
 
     @property
     def origenes(self) -> list[str]:

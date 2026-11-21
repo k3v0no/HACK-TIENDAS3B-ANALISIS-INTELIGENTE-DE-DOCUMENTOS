@@ -63,7 +63,7 @@ def expediente_de_ejemplo() -> Expediente:
 
 @app.post("/expedientes", response_model=Expediente, status_code=202, dependencies=[Depends(autenticar)])
 async def crear_expediente(
-    tareas: BackgroundTasks, archivos: list[UploadFile] = File(description="PDFs del expediente")
+    tareas: BackgroundTasks, archivos: list[UploadFile] = File(description="Documentos del expediente: PDF, JPG o PNG")
 ) -> Expediente:
     """Recibe los PDFs y arranca el proceso. Consulta el avance con GET /expedientes/{id}."""
     limite = settings.max_pdf_mb * 1024 * 1024
@@ -75,8 +75,8 @@ async def crear_expediente(
         nombre = Path(archivo.filename or "documento.pdf").name
         if len(datos) > limite:
             raise HTTPException(status_code=413, detail=f"{nombre} supera {settings.max_pdf_mb} MB")
-        if not datos.startswith(b"%PDF"):
-            raise HTTPException(status_code=415, detail=f"{nombre} no es un PDF")
+        if ocr.tipo_de_archivo(datos) is None:
+            raise HTTPException(status_code=415, detail=f"{nombre} no es un PDF ni una imagen JPG o PNG")
         contenidos.append((Documento(id=storage.nuevo_id(), archivo=nombre), datos))
 
     for documento, datos in contenidos:

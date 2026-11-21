@@ -24,9 +24,11 @@ class Evidencia(BaseModel):
 
 
 class Campo(BaseModel):
-    nombre: str
+    nombre: str = Field(description="Identificador del dato, p. ej. superficie_terreno_m2")
+    etiqueta: str = Field(default="", description="Nombre legible del dato para mostrar")
     valor: str | None
     confianza: float = Field(ge=0, le=1)
+    sustentado: bool = Field(default=True, description="False si el verificador no encontró el valor en el texto citado")
     evidencia: list[Evidencia] = []
 
 
@@ -42,6 +44,9 @@ class Documento(BaseModel):
     archivo: str
     tipo: TipoDocumento = "desconocido"
     hash_ocr: str | None = Field(default=None, description="Uso interno: clave del caché de OCR")
+    legible: bool = True
+    confianza_ocr: float | None = Field(default=None, description="Promedio de confianza de lectura del documento")
+    observaciones: list[str] = Field(default=[], description="Notas del clasificador y del verificador")
     paginas: list[PaginaInfo] = []
     campos: list[Campo] = []
 
@@ -53,6 +58,7 @@ class ValorComparado(BaseModel):
 
 
 class ValidacionCruzada(BaseModel):
+    regla_id: str = ""
     regla: str
     estado: Literal["ok", "discrepancia", "no_evaluable"]
     detalle: str
@@ -60,14 +66,17 @@ class ValidacionCruzada(BaseModel):
 
 
 class Requisito(BaseModel):
+    regla_id: str = Field(default="", description="Identificador de la regla, p. ej. U2")
     nombre: str
     cumple: bool | None = Field(description="None cuando no se pudo evaluar")
+    efecto: str = Field(default="", description="Recomendación que provoca si no se cumple")
     detalle: str
     documento_id: str | None = None
     evidencia: list[Evidencia] = []
 
 
 class Hallazgo(BaseModel):
+    regla_id: str = ""
     severidad: Literal["alta", "media", "baja"]
     titulo: str
     explicacion: str
@@ -78,6 +87,8 @@ class Hallazgo(BaseModel):
 class Dictamen(BaseModel):
     recomendacion: Recomendacion
     confianza: float = Field(ge=0, le=1)
+    nivel_confianza: Literal["alto", "medio", "bajo"] = "medio"
+    fecha_referencia: str = Field(default="", description="Fecha contra la que se evaluaron las vigencias (AAAA-MM-DD)")
     resumen: str
     faltantes: list[TipoDocumento] = []
     requisitos: list[Requisito] = []

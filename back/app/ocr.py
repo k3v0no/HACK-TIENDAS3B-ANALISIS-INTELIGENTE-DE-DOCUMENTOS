@@ -9,7 +9,7 @@ import json
 import threading
 from pathlib import Path
 
-import fitz  # PyMuPDF
+import pymupdf as fitz
 import numpy as np
 
 from .config import settings
@@ -46,6 +46,17 @@ def hash_archivo(ruta: Path) -> str:
         for bloque in iter(lambda: f.read(1 << 20), b""):
             h.update(bloque)
     return h.hexdigest()
+
+
+def tipo_de_archivo(datos: bytes) -> str | None:
+    """Tipo según los primeros bytes: 'pdf', 'jpeg', 'png' o None si no se admite."""
+    if datos.startswith(b"%PDF"):
+        return "pdf"
+    if datos.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if datos.startswith(b"\x89PNG"):
+        return "png"
+    return None
 
 
 def carpeta_cache(hash_pdf: str) -> Path:
@@ -150,7 +161,11 @@ def ocr_pdf(ruta: Path, al_avanzar=None) -> dict:
 
     destino.mkdir(parents=True, exist_ok=True)
     paginas = []
-    with fitz.open(ruta) as pdf:
+    datos = ruta.read_bytes()
+    tipo = tipo_de_archivo(datos)
+    if tipo is None:
+        raise ValueError("formato de archivo no admitido")
+    with fitz.open(stream=datos, filetype=tipo) as pdf:
         total = pdf.page_count
         for numero, pagina in enumerate(pdf, start=1):
             paginas.append(_procesar_pagina(pagina, numero, destino))

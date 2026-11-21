@@ -28,7 +28,8 @@ Copia `.env.example` como `.env` y rellena:
 |---|---|
 | `API_KEY` | Clave que el front envía en la cabecera `X-API-Key`. Obligatoria |
 | `CORS_ORIGINS` | URL(s) del front, separadas por coma |
-| `DEEPSEEK_API_KEY` | Llave del LLM |
+| `DEEPSEEK_API_KEY` | Llave del LLM (se crea en portal.deploy.com, "Service API Keys") |
+| `LLM_BASE_URL`, `LLM_MODEL` | Servicio y modelo; ya vienen puestos en `.env.example` |
 | `OCR_DEVICE` | `gpu` o `cpu` |
 
 ## Ejecutar
@@ -50,7 +51,7 @@ Todas menos `/salud` piden la cabecera `X-API-Key` (o `?key=` en la URL, pensado
 |---|---|
 | `GET /salud` | Comprueba que el servicio responde |
 | `GET /ejemplo/expediente` | Expediente ficticio con dictamen completo, para desarrollar el front |
-| `POST /expedientes` | Sube los PDFs (campo `archivos`, uno o varios). Devuelve el expediente con su `id` |
+| `POST /expedientes` | Sube los documentos (campo `archivos`, uno o varios; PDF, JPG o PNG). Devuelve el expediente con su `id` |
 | `GET /expedientes/{id}` | Estado y avance; al terminar incluye el dictamen |
 | `GET /expedientes/{id}/documentos/{doc_id}/paginas/{n}` | Imagen JPEG de la página |
 
@@ -82,7 +83,40 @@ Solo imprime conteos y confianzas, no el contenido.
 | `app/schemas.py` | Contrato JSON con el front |
 | `app/ocr.py` | Rasterizado, PaddleOCR y caché por hash del PDF |
 | `app/pipeline.py` | Proceso en segundo plano: OCR y análisis |
-| `app/agentes.py` | Análisis multiagente (pendiente) |
+| `app/agentes.py` | Grafo de agentes (LangGraph) |
+| `app/extraccion.py` | Clasificador, extractores, verificador y revisor |
+| `app/validacion.py` | Reglas por documento, validaciones cruzadas y dictamen |
+| `app/reglas.py` | Catálogo de reglas, efectos y utilidades de comparación |
 | `app/llm.py` | Conexión al LLM |
 | `app/ejemplo.py` | Expediente ficticio |
 | `data/` | PDFs subidos y caché de OCR (no se sube al repo) |
+
+## Agentes
+
+Orquestados con LangGraph en `app/agentes.py`:
+
+```
+clasificador -> extractores (uno por tipo) + revisor de uso de suelo -> verificador
+             -> validador por documento -> validador cruzado -> dictaminador
+```
+
+| Agente | Qué hace | Cómo |
+|---|---|---|
+| Clasificador | Identifica el tipo de cada documento | Palabras clave; LLM si hay duda |
+| Extractores | Sacan los datos de cada tipo citando las líneas de origen | LLM con esquema por tipo |
+| Revisor de uso de suelo | Segunda opinión independiente sobre el uso comercial | LLM; si no coincide con el extractor, el dato queda en duda |
+| Verificador | Comprueba que cada valor esté en el texto citado | Código |
+| Validador por documento | Reglas de cada tipo (vigencia, adeudos, afectaciones...) | Código (`app/validacion.py`) |
+| Validador cruzado | Compara dirección, titular, superficie, número oficial y clave entre documentos | Código |
+| Dictaminador | Recomendación, confianza y hallazgos con evidencia | Decisión en código; el LLM solo redacta el resumen |
+
+Las reglas y el efecto de cada una (No cumple / Requiere revisión) están en `app/reglas.py`.
+
+## Fecha de referencia
+
+Las vigencias se evalúan contra `FECHA_REFERENCIA` (formato `AAAA-MM-DD`) del `.env`; si está
+vacía se usa la fecha de hoy. El dictamen informa la fecha usada en `fecha_referencia`.
+
+## Formatos admitidos
+
+PDF, JPG y PNG. Un expediente tarda entre 20 segundos y 2 minutos, según el número de páginas.

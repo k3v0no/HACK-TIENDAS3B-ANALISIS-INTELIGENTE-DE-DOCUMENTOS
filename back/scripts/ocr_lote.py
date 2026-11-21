@@ -16,9 +16,14 @@ def main() -> int:
         print(__doc__)
         return 2
     carpeta = Path(sys.argv[1])
-    pdfs = sorted(carpeta.rglob("*.pdf"))
+    extensiones = {".pdf", ".jpg", ".jpeg", ".png"}
+    pdfs = sorted(
+        f
+        for f in carpeta.rglob("*")
+        if f.suffix.lower() in extensiones and not f.name.startswith("._") and "__MACOSX" not in f.parts
+    )
     if not pdfs:
-        print(f"No hay PDFs en {carpeta}")
+        print(f"No hay documentos en {carpeta}")
         return 1
 
     fallidos = 0
