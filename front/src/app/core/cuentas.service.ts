@@ -2,9 +2,13 @@
 //
 // Las cuentas viven en el almacenamiento local del navegador, con la contraseña derivada con
 // PBKDF2 (Web Crypto). Las cuentas iniciales se crean con su sal y su hash ya calculados: la
-// contraseña no aparece en el código (el repositorio es público). El equipo la comparte aparte. La sesión dura mientras la pestaña esté abierta. En producción esto lo
-// resuelve el back con un proveedor de identidad y verifica permisos en cada petición; aquí
-// solo se simula para mostrar cómo cambia lo que ve cada área.
+// contraseña no aparece en el código (el repositorio es público). El equipo la comparte aparte.
+// La sesión dura mientras la pestaña esté abierta. En producción esto lo resuelve el back con un
+// proveedor de identidad y verifica permisos en cada petición; aquí solo se simula para mostrar
+// cómo cambia lo que ve cada área.
+//
+// Los perfiles siguen la guía de actores del reto: Analista de expansión, Jurídico, Gestor de
+// trámites, Gerente o comité, Auditor y Administrador de reglas. Solo el arrendador sube documentos.
 import { Injectable, computed, signal } from '@angular/core';
 
 export const TIPO_TRABAJADOR = 'Trabajador 3B';
@@ -12,34 +16,41 @@ export const TIPO_ARRENDADOR = 'Arrendador';
 export type TipoCuenta = typeof TIPO_TRABAJADOR | typeof TIPO_ARRENDADOR;
 
 export type Permiso =
-  | 'usuarios.admin' | 'expedientes.ver' | 'expedientes.cargar' | 'documentos.ver' | 'propietario.ver'
-  | 'inmueble.ver' | 'fiscal.ver' | 'regulatorio.ver' | 'hallazgos.ver' | 'dictamen.decidir'
+  // datos que se pueden ver
+  | 'expedientes.ver' | 'documentos.ver' | 'propietario.ver' | 'inmueble.ver' | 'fiscal.ver' | 'regulatorio.ver'
+  | 'hallazgos.ver'
+  // acciones por rol
+  | 'expedientes.analizar' | 'inmuebles.gestionar' | 'pendientes.turnar' | 'casos.juridicos' | 'extraccion.corregir'
+  | 'hallazgos.validar' | 'tramites.gestionar' | 'portafolio.ver' | 'negocio.decidir' | 'fichas.exportar'
+  | 'auditoria.ver' | 'reglas.configurar' | 'usuarios.admin'
+  // arrendador
   | 'propios.cargar' | 'propios.ver';
 
 /** Perfiles = conjuntos de permisos (datos, no código). */
+const VER_TODO: Permiso[] = ['expedientes.ver', 'documentos.ver', 'propietario.ver', 'inmueble.ver', 'fiscal.ver',
+  'regulatorio.ver', 'hallazgos.ver'];
 export const PERMISOS: Record<string, Permiso[]> = {
   Superusuario: ['usuarios.admin'],
-  Jurídico: ['expedientes.ver', 'expedientes.cargar', 'documentos.ver', 'propietario.ver', 'inmueble.ver',
-    'fiscal.ver', 'regulatorio.ver', 'hallazgos.ver', 'dictamen.decidir'],
-  'Analista de expansión': ['expedientes.ver', 'expedientes.cargar', 'documentos.ver', 'propietario.ver',
-    'inmueble.ver', 'regulatorio.ver', 'hallazgos.ver'],
-  'Gestor de trámites': ['expedientes.ver', 'documentos.ver', 'inmueble.ver', 'regulatorio.ver', 'hallazgos.ver'],
-  Fiscal: ['expedientes.ver', 'documentos.ver', 'propietario.ver', 'inmueble.ver', 'fiscal.ver', 'hallazgos.ver'],
-  Gerente: ['expedientes.ver', 'inmueble.ver', 'regulatorio.ver', 'hallazgos.ver', 'dictamen.decidir'],
-  Auditor: ['expedientes.ver', 'documentos.ver', 'propietario.ver', 'inmueble.ver', 'fiscal.ver',
-    'regulatorio.ver', 'hallazgos.ver'],
+  'Analista de expansión': [...VER_TODO, 'expedientes.analizar', 'inmuebles.gestionar', 'pendientes.turnar'],
+  Jurídico: [...VER_TODO, 'casos.juridicos', 'extraccion.corregir', 'hallazgos.validar', 'pendientes.turnar'],
+  'Gestor de trámites': ['expedientes.ver', 'documentos.ver', 'inmueble.ver', 'regulatorio.ver', 'hallazgos.ver',
+    'tramites.gestionar'],
+  Gerente: ['expedientes.ver', 'documentos.ver', 'inmueble.ver', 'regulatorio.ver', 'hallazgos.ver', 'portafolio.ver',
+    'negocio.decidir', 'fichas.exportar'],
+  Auditor: [...VER_TODO, 'auditoria.ver', 'fichas.exportar'],
+  'Administrador de reglas': ['expedientes.ver', 'hallazgos.ver', 'reglas.configurar'],
   [TIPO_ARRENDADOR]: ['propios.cargar', 'propios.ver'],
 };
 export const AREAS = Object.keys(PERMISOS).filter((p) => p !== TIPO_ARRENDADOR && p !== 'Superusuario');
 
 export const PERFIL_INFO: Record<string, { descripcion: string; icono: string }> = {
   Superusuario: { descripcion: 'Da de alta a trabajadores. No ve expedientes.', icono: 'admin_panel_settings' },
-  Jurídico: { descripcion: 'Ve todo el expediente y emite el dictamen.', icono: 'gavel' },
-  'Analista de expansión': { descripcion: 'Carga y revisa expedientes, sin datos fiscales.', icono: 'travel_explore' },
-  'Gestor de trámites': { descripcion: 'Revisa vigencias y documentos municipales.', icono: 'assignment' },
-  Fiscal: { descripcion: 'Revisa predial, contribuyente y clave catastral.', icono: 'account_balance' },
-  Gerente: { descripcion: 'Ve resultados y decide, sin documentos originales.', icono: 'insights' },
-  Auditor: { descripcion: 'Consulta todo en solo lectura.', icono: 'policy' },
+  'Analista de expansión': { descripcion: 'Inicia la revisión de cada inmueble y resuelve o turna lo que impide avanzar.', icono: 'travel_explore' },
+  Jurídico: { descripcion: 'Compara documentos con evidencia, corrige lecturas y valida los hallazgos.', icono: 'gavel' },
+  'Gestor de trámites': { descripcion: 'Da seguimiento a permisos, vigencias y solicitudes de documentos.', icono: 'assignment' },
+  Gerente: { descripcion: 'Decide si un inmueble avanza, con el tablero y el resumen ejecutivo.', icono: 'insights' },
+  Auditor: { descripcion: 'Reconstruye qué pasó en cada expediente, en solo lectura.', icono: 'policy' },
+  'Administrador de reglas': { descripcion: 'Mantiene las reglas y prueba su impacto antes de publicarlas.', icono: 'tune' },
   [TIPO_ARRENDADOR]: { descripcion: 'Sube documentos y consulta su trámite.', icono: 'real_estate_agent' },
 };
 
@@ -54,19 +65,20 @@ const SEMILLA: [string, string, TipoCuenta, string, string, string][] = [
     '2bc1f6ba14e9801df7f13c2c9856520c', '7259fdb39ddf6199f6ce31db2e0469d58f8f3c289ef67f07de53f43580c0e3a2'],
   ['analista', 'Carla Méndez', TIPO_TRABAJADOR, 'Analista de expansión',
     '3de0b8da01c1f1aa3f0a2722d2481873', 'e1dcab100bf96d9551f0af022a2d8d4c964d790250cd9f3bb5ea807ce35bbf22'],
-  ['fiscal', 'Jorge Ramos', TIPO_TRABAJADOR, 'Fiscal',
-    '68bfc2b8a68a719fe0ae9047996cfe19', 'd1d3067fb27f91e099eb4e79cc469bb48ee7c7277e353b335adc5afff9a3a3b3'],
   ['gestor', 'Sofía Núñez', TIPO_TRABAJADOR, 'Gestor de trámites',
     '65620e0561541a7e3028b58891f17249', 'bb6886f78f9fa1959814126ae65f5a3805abc81ecd92d79673327144c015ba26'],
   ['gerente', 'Raúl Ortega', TIPO_TRABAJADOR, 'Gerente',
     'ea17841418de4da637dbcf7695a9295c', '500b73a9724d0abf14a5badcfde0bb63b12ae8d631e46c676a66dd4a55c850f4'],
   ['auditor', 'Elena Ríos', TIPO_TRABAJADOR, 'Auditor',
     'b43393c046ba482afa7cc2929189c3a3', '97ca79cdd331f0a76567d6f629586338dc11ef30ef770f1eeeeac08c787b56ee'],
+  ['reglas', 'Martín Cruz', TIPO_TRABAJADOR, 'Administrador de reglas',
+    'c1b5f29ea778e723742560bf7e991587', '0fced854cdbb7dd64720aacdc6bc8822279aa06b69b13b17e6b8a19843cf0153'],
   ['arrendador', 'Patricia Lara', TIPO_ARRENDADOR, TIPO_ARRENDADOR,
     '20fedfeb277c6e30c850bbfd847176fd', '7bcb76833693286bbd267db09bba6b1827d95760a2f93a5930435fcd8241c0eb'],
 ];
-// v2: cambió la contraseña de las cuentas iniciales; los navegadores con la versión anterior se vuelven a sembrar.
-const LLAVE_CUENTAS = 'tiendas3b.cuentas.v2';
+// v3: perfiles según la guía de actores (sale Fiscal, entra Administrador de reglas). Los navegadores con
+// una versión anterior vuelven a sembrar las cuentas iniciales.
+const LLAVE_CUENTAS = 'tiendas3b.cuentas.v3';
 const LLAVE_SESION = 'tiendas3b.sesion';
 
 function hex(bytes: ArrayBuffer | Uint8Array): string {
@@ -123,7 +135,7 @@ export class CuentasService {
       datos[usuario] = { usuario, nombre, tipo, perfil, activo: true, sal, hash };
     }
     escribir(localStorage, LLAVE_CUENTAS, datos);
-    try { localStorage.removeItem('tiendas3b.cuentas.v1'); } catch { /* sin almacenamiento */ }
+    try { ['tiendas3b.cuentas.v1', 'tiendas3b.cuentas.v2'].forEach((k) => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
   }
 
   private async nuevoRegistro(usuario: string, nombre: string, tipo: TipoCuenta, perfil: string, clave: string): Promise<Registro> {
@@ -219,10 +231,10 @@ export class CuentasService {
   /** Qué permiso hace falta para ver un dato extraído, según el nombre del campo. */
   static permisoDeCampo(campo: string): Permiso {
     const c = campo.toLowerCase();
-    if (['propietario', 'contribuyente', 'titular'].some((p) => c.includes(p))) return 'propietario.ver';
-    if (['clave', 'cuenta predial', 'adeudo', 'pago'].some((p) => c.includes(p))) return 'fiscal.ver';
-    if (['uso', 'alineamiento', 'vigencia', 'emisión', 'autoridad', 'restricci', 'compatib', 'condicion']
-      .some((p) => c.includes(p))) return 'regulatorio.ver';
+    if (['propietario', 'contribuyente', 'titular', 'transmite', 'solicitante'].some((p) => c.includes(p))) return 'propietario.ver';
+    if (['clave', 'cuenta predial', 'adeudo', 'pago', 'ejercicio'].some((p) => c.includes(p))) return 'fiscal.ver';
+    if (['uso', 'giro', 'zonific', 'alineamiento', 'vigen', 'plazo', 'emisión', 'autoridad', 'restricci', 'afectaci',
+      'compatib', 'condicion', 'folio', 'firma'].some((p) => c.includes(p))) return 'regulatorio.ver';
     return 'inmueble.ver';
   }
 

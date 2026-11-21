@@ -1,0 +1,88 @@
+@if (exp(); as e) {
+  <app-cabecera-expediente [exp]="e" vista="Resumen ejecutivo para el comité" icono="insights" volver="/gerente/tablero" volverTexto="Tablero">
+    <button type="button" class="btn chico" (click)="exportar()"><span class="ms" aria-hidden="true">download</span>Exportar ficha ejecutiva</button>
+  </app-cabecera-expediente>
+
+  <section class="tres" aria-label="Estado del inmueble">
+    <div class="dato-grande">
+      <span class="etq">Recomendación automática</span>
+      <b>{{ d()?.recomendacion ?? 'Sin dictamen' }}</b>
+      @if (d(); as dic) { <span class="suave pequeno">Confianza {{ dic.nivelConfianza }} ({{ pct(dic.confianza) }}), análisis {{ corrida() }}</span> }
+    </div>
+    <div class="dato-grande">
+      <span class="etq">Validación jurídica</span>
+      <b>{{ val()?.texto }}</b>
+      <span class="suave pequeno">{{ val()?.estado === 'validado' ? 'Todos los hallazgos relevantes revisados' : 'Puede decidir con esto, o esperar a Jurídico' }}</span>
+    </div>
+    <div class="dato-grande">
+      <span class="etq">Siguiente acción</span>
+      <b>{{ siguiente()?.area }}</b>
+      <span class="suave pequeno">{{ siguiente()?.accion }}</span>
+    </div>
+  </section>
+
+  <section class="tarjeta explicacion" aria-labelledby="exp-t">
+    <h2 id="exp-t">En una frase</h2>
+    <p class="frase">{{ bloqueo()?.frase }}</p>
+    <p class="suave">{{ bloqueo()?.detalle }}</p>
+  </section>
+
+  <div class="rejilla">
+    <section class="tarjeta" aria-labelledby="det-t">
+      <h2 id="det-t">Hallazgos determinantes</h2>
+      @for (h of determinantes(); track h.id) {
+        <article class="hallazgo" [class]="'hallazgo ' + h.severidad">
+          <b>{{ h.titulo }}</b>
+          <p class="pequeno">{{ h.explicacion }}</p>
+          <p class="pie">
+            <span class="badge neutra">{{ causaDe(h.reglaId) }}</span>
+            @if (validacionDe(h.id); as v) { <span class="badge" [class]="'badge ' + (v.estado === 'confirmado' ? 'no_cumple' : 'cumple')">{{ v.estado === 'confirmado' ? 'Confirmado' : 'Descartado' }} por Jurídico</span> }
+            @if (h.evidencia.length) { <button type="button" class="fuente" (click)="citas.set(h.evidencia)"><span class="ms" aria-hidden="true">plagiarism</span>Ver la evidencia</button> }
+          </p>
+        </article>
+      } @empty { <p class="suave">Sin hallazgos: todas las reglas se cumplieron.</p> }
+      <a class="enlace" [routerLink]="['/expediente', e.id]">Ver el dictamen completo</a>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="pasos-t">
+      <h2 id="pasos-t">Próximos pasos</h2>
+      @for (t of pasos(); track t.id) {
+        <p class="paso"><span class="ms" aria-hidden="true">arrow_right</span><span><b>{{ t.area }}</b>: {{ t.titulo }} <span class="suave pequeno">({{ t.estado }})</span></span></p>
+      } @empty { <p class="suave">No hay tareas abiertas.</p> }
+    </section>
+  </div>
+
+  <section class="tarjeta decision" aria-labelledby="dec-t">
+    <h2 id="dec-t">Decisión de expansión</h2>
+    <p class="suave pequeno">Se registra con la recomendación «{{ d()?.recomendacion ?? 'sin dictamen' }}», el análisis {{ corrida() }} y el estado jurídico «{{ val()?.texto }}» disponibles ahora.</p>
+    <div class="opciones" role="radiogroup" aria-label="Decisión">
+      @for (k of ['avanza', 'espera', 'descartado']; track k) {
+        <label class="opcion" [class.sel]="valor() === k">
+          <input type="radio" name="decision" [value]="k" [checked]="valor() === k" (change)="valor.set($any(k))" class="sr-only">
+          <span class="ms" aria-hidden="true">{{ k === 'avanza' ? 'trending_up' : k === 'espera' ? 'pause_circle' : 'block' }}</span>{{ $any(DECISION)[k] }}
+        </label>
+      }
+    </div>
+    <div class="campo">
+      <label for="dec-motivo">Motivo</label>
+      <textarea id="dec-motivo" class="entrada" rows="2" [value]="motivo()" (input)="motivo.set($any($event.target).value)"></textarea>
+    </div>
+    @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">error</span>{{ error() }}</div> }
+    @if (aviso()) { <div class="aviso exito" role="status"><span class="ms" aria-hidden="true">check_circle</span>{{ aviso() }}</div> }
+    <button type="button" class="btn primario" (click)="registrar()"><span class="ms" aria-hidden="true">how_to_vote</span>Registrar decisión</button>
+
+    @if (decisiones().length) {
+      <h3>Historial</h3>
+      <ul class="historial">
+        @for (x of decisiones(); track x.fecha) {
+          <li><b>{{ DECISION[x.valor] }}</b>, por {{ x.autor }} el {{ fecha(x.fecha) }}. «{{ x.motivo }}»
+            <span class="suave pequeno">Con recomendación {{ x.recomendacion ?? 'sin dictamen' }}, análisis {{ x.corrida }}, {{ x.validacionJuridica }}.</span></li>
+        }
+      </ul>
+    }
+  </section>
+
+  <app-cajon-evidencia [evidencias]="citas()" [dictamen]="d()" (cerrar)="citas.set([])" />
+} @else {
+  <section class="tarjeta"><h1>No encontramos ese inmueble</h1><p class="suave">Vuelve al <a routerLink="/gerente/tablero">tablero</a>.</p></section>
+}

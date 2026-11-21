@@ -1,0 +1,36 @@
+/* Tablero por estado: el gestor ve de un vistazo dónde está cada trámite. */
+.tablero { display: grid; grid-template-columns: repeat(5, minmax(10.5rem, 1fr)); gap: .8rem; overflow-x: auto; padding-bottom: .5rem; align-items: start; }
+.columna { background: #EEF0F0; border-radius: var(--radio); padding: .7rem; display: grid; gap: .55rem; min-height: 12rem; }
+.columna header { padding: .2rem .2rem .4rem; }
+.columna h2 { font-size: .95rem; display: flex; align-items: center; gap: .4rem; }
+.columna h2 .ms { color: var(--rojo-accion); font-size: 1.15rem; }
+.n { margin-left: auto; font-family: var(--cuerpo); font-size: .75rem; padding: 0 .45rem; border-radius: 99px; background: var(--superficie); }
+.tarjeta-tarea { display: grid; gap: .35rem; text-align: left; padding: .75rem; border-radius: var(--radio-s); border: 1px solid var(--borde);
+  background: var(--superficie); box-shadow: var(--sombra); cursor: pointer; color: var(--texto); }
+.tarjeta-tarea:hover { border-color: var(--rojo-accion); }
+.inmueble { font-size: .78rem; color: var(--texto-suave); overflow-wrap: anywhere; }
+.tarjeta-tarea b { font-size: .92rem; line-height: 1.3; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: .25rem; }
+.veredicto { display: inline-flex; gap: .25rem; align-items: center; font-size: .8rem; font-weight: 600; }
+.veredicto.ok { color: var(--verde-texto); } .veredicto.mal { color: var(--rojo-texto); }
+.pie span { display: inline-flex; gap: .25rem; align-items: center; }
+.vacia { text-align: center; padding: 1rem 0; }
+
+.dialogo { width: min(40rem, calc(100vw - 2rem)); border: 1px solid var(--borde); border-radius: var(--radio-l); padding: 1.4rem;
+  box-shadow: var(--sombra-alta); color: var(--texto); }
+.dialogo::backdrop { background: rgba(4, 33, 31, .45); }
+.d-cabeza { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
+.d-cabeza h2 { font-size: 1.15rem; }
+.d-cabeza a { color: var(--rojo-texto); font-weight: 600; }
+.datos { margin: 0 0 1rem; border: 1px solid var(--borde); border-radius: var(--radio-s); }
+.datos > div { display: grid; grid-template-columns: 8rem 1fr; gap: .6rem; padding: .45rem .7rem; border-bottom: 1px solid var(--borde); }
+.datos > div:last-child { border-bottom: 0; }
+.datos dt { font-size: .82rem; color: var(--texto-suave); font-weight: 600; }
+.datos dd { margin: 0; font-size: .9rem; }
+textarea.entrada { resize: vertical; }
+.campo .fila { margin-top: .4rem; }
+.dos { display: grid; grid-template-columns: 1fr 1.6fr; gap: .8rem; }
+.notas { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .5rem; font-size: .9rem; }
+details summary { cursor: pointer; font-weight: 600; font-size: .9rem; margin-bottom: .5rem; }
+.acciones { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+@media (max-width: 640px) { .dos { grid-template-columns: 1fr; } .datos > div { grid-template-columns: 1fr; gap: .1rem; } }

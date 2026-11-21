@@ -1,0 +1,117 @@
+<app-encabezado icono="tune" titulo="Reglas"
+  descripcion="Criterios del comité traducidos a reglas verificables. Cambia una regla en borrador, prueba su efecto y publícala con su fuente y motivo." />
+
+<div class="version">
+  <span class="ms" aria-hidden="true">verified</span>
+  <span><b>Versión {{ vigente().version }} publicada</b> el {{ fecha(vigente().fecha) }} por {{ vigente().autor }}. {{ vigente().motivo }}.</span>
+</div>
+<p class="aviso info pequeno"><span class="ms" aria-hidden="true">info</span>
+  <span>El back aplica su propio catálogo (<code>back/app/reglas.py</code>). Lo que publiques aquí queda versionado en este prototipo y lo usan el comparador, las vigencias y las simulaciones; para que el back lo aplique, el equipo debe llevar el cambio a ese archivo.</span></p>
+@if (aviso()) { <div class="aviso exito" role="status"><span class="ms" aria-hidden="true">check_circle</span>{{ aviso() }}</div> }
+
+<div class="rejilla">
+  <div class="principal">
+    <section class="tarjeta" aria-labelledby="cat-t">
+      <div class="cabeza">
+        <h2 id="cat-t"><span class="ms" aria-hidden="true">menu_book</span>Catálogo</h2>
+        <div class="envoltura-icono buscar"><span class="ms" aria-hidden="true">search</span>
+          <label class="sr-only" for="q">Buscar regla</label>
+          <input id="q" class="entrada con-icono" placeholder="Buscar por clave o nombre" [ngModel]="q()" (ngModelChange)="q.set($event)"></div>
+      </div>
+      <div class="grupos" role="group" aria-label="Filtrar por grupo">
+        @for (g of ['Todas'].concat(grupos); track g) {
+          <button type="button" class="chip" [class.activo]="grupo() === g" [attr.aria-pressed]="grupo() === g" (click)="grupo.set(g)">{{ g }}</button>
+        }
+      </div>
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead><tr><th scope="col">Clave</th><th scope="col">Regla</th><th scope="col">Si no se cumple</th><th scope="col">Versión</th><th scope="col">Estado</th></tr></thead>
+          <tbody>
+            @for (r of reglas(); track r.id) {
+              <tr [class.modificada]="borradorEfectos()[r.id] !== vigente().efectos[r.id]">
+                <td><span class="clave">{{ r.id }}</span></td>
+                <td><b>{{ r.nombre }}</b><small>{{ r.grupo }}. Fuente: {{ r.fuente }}.</small></td>
+                <td><label class="sr-only" [for]="'ef-' + r.id">Efecto de {{ r.id }}</label>
+                  <select [id]="'ef-' + r.id" class="entrada chica" [value]="borradorEfectos()[r.id]" (change)="cambiarEfecto(r.id, $any($event.target).value)">
+                    @for (e of efectos; track e) { <option [value]="e">{{ e }}</option> }</select></td>
+                <td>v{{ versionDe(r) }}</td>
+                <td>@if (borradorEfectos()[r.id] !== vigente().efectos[r.id]) { <span class="badge revisar">Borrador</span> } @else { <span class="badge cumple">Publicada</span> }</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="par-t">
+      <h2 id="par-t"><span class="ms" aria-hidden="true">straighten</span>Comparaciones y tolerancias</h2>
+      <div class="parametros">
+        @for (k of claves; track k) {
+          <div class="campo">
+            <label [for]="'p-' + k">{{ PARAMETRO_INFO[k].nombre }} @if (PARAMETRO_INFO[k].unidad) { ({{ PARAMETRO_INFO[k].unidad }}) }</label>
+            <input [id]="'p-' + k" type="number" step="any" class="entrada" [class.modificada]="borradorParametros()[k] !== vigente().parametros[k]"
+                   [value]="borradorParametros()[k]" (input)="cambiarParametro(k, $any($event.target).value)" [attr.aria-describedby]="'ayuda-' + k">
+            <small [id]="'ayuda-' + k">{{ PARAMETRO_INFO[k].ayuda }}@if (!PARAMETRO_INFO[k].enBack) { Solo afecta a este prototipo. }</small>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="ver-t">
+      <h2 id="ver-t"><span class="ms" aria-hidden="true">history</span>Versiones</h2>
+      <ol class="versiones">
+        @for (v of versiones(); track v.version) {
+          <li><b>Versión {{ v.version }}</b> <span class="suave pequeno">{{ fecha(v.fecha) }}, {{ v.autor }}</span>
+            <p class="pequeno">{{ v.motivo }}. Fuente: {{ v.fuente }}.</p>
+            @if (v.cambios.length) { <ul class="pequeno">@for (c of v.cambios; track c) { <li>{{ c }}</li> }</ul> }</li>
+        }
+      </ol>
+    </section>
+  </div>
+
+  <aside class="lateral" aria-label="Borrador">
+    <section class="tarjeta borrador" aria-labelledby="bor-t">
+      <h2 id="bor-t"><span class="ms" aria-hidden="true">edit_document</span>Borrador <span class="n">{{ cambios().length }}</span></h2>
+      @if (cambios().length) {
+        <ul class="cambios">@for (c of cambios(); track c) { <li>{{ c }}</li> }</ul>
+      } @else { <p class="suave pequeno">Sin cambios. Modifica un efecto o una tolerancia para empezar.</p> }
+
+      <h3>Probar en un expediente</h3>
+      @if (analizados().length) {
+        <div class="fila">
+          <label class="sr-only" for="exp-prueba">Expediente de prueba</label>
+          <select id="exp-prueba" class="entrada" [value]="expPrueba()" (change)="expPrueba.set($any($event.target).value)">
+            @for (e of analizados(); track e.id) { <option [value]="e.id">{{ titulo(e) }}</option> }</select>
+          <button type="button" class="btn chico" (click)="probar()"><span class="ms" aria-hidden="true">science</span>Simular</button>
+        </div>
+        @if (simulacion(); as sim) {
+          <div class="simulacion" role="status">
+            <p class="marca-sim"><span class="ms" aria-hidden="true">science</span>Simulación: no cambia ningún dictamen</p>
+            <p class="cambio"><span>{{ sim.s.base }}</span><span class="ms" aria-hidden="true">arrow_forward</span><b>{{ sim.s.simulada }}</b></p>
+            @if (sim.s.base !== sim.s.real) { <p class="pequeno suave">El dictamen real dice «{{ sim.s.real }}»: el back pudo considerar algo que la simulación no reproduce.</p> }
+            @for (c of sim.s.cambios; track c.reglaId) { <p class="pequeno"><b>{{ c.reglaId }}</b>: {{ c.antes }} → {{ c.despues }}</p> }
+            @empty { <p class="pequeno suave">Ningún hallazgo cambia en este expediente.</p> }
+          </div>
+        }
+      } @else { <p class="suave pequeno">No hay expedientes analizados para probar.</p> }
+
+      <h3>Impacto en los expedientes</h3>
+      @if (cambios().length) {
+        @for (x of impacto(); track x.e.id) {
+          <p class="pequeno impacto"><b>{{ titulo(x.e) }}</b>: {{ x.s.base }} → {{ x.s.simulada }} ({{ x.s.cambios.length }} regla(s))</p>
+        } @empty { <p class="pequeno suave">Ningún expediente cambiaría de resultado.</p> }
+      } @else { <p class="suave pequeno">Aparecerá cuando el borrador tenga cambios.</p> }
+
+      <h3>Publicar</h3>
+      <div class="campo"><label for="motivo">Motivo</label>
+        <input id="motivo" class="entrada" [(ngModel)]="motivo" placeholder="p. ej. el comité aceptó 3 % de tolerancia"></div>
+      <div class="campo"><label for="fuente">Fuente del criterio</label>
+        <input id="fuente" class="entrada" [(ngModel)]="fuente"></div>
+      @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">error</span>{{ error() }}</div> }
+      <div class="fila">
+        <button type="button" class="btn primario" (click)="publicar()" [disabled]="!cambios().length"><span class="ms" aria-hidden="true">publish</span>Publicar versión {{ vigente().version + 1 }}</button>
+        <button type="button" class="btn fantasma" (click)="descartar()" [disabled]="!cambios().length">Descartar borrador</button>
+      </div>
+    </section>
+  </aside>
+</div>

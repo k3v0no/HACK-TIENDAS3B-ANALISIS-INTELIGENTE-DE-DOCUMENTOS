@@ -1,4 +1,4 @@
-<a class="volver" routerLink="/trabajador/bandeja"><span class="ms" aria-hidden="true">arrow_back</span>Volver a la bandeja</a>
+<button type="button" class="volver" (click)="volver()"><span class="ms" aria-hidden="true">arrow_back</span>Volver</button>
 
 <ng-template #evidencias let-lista let-campo="campo">
   @if (!campo || ve(campo)) {
@@ -167,22 +167,6 @@
       <p class="suave pequeno nota"><span class="ms" aria-hidden="true">lock</span> Tu área no incluye ver los documentos originales; los fragmentos citados sí se muestran.</p>
     }
 
-    @if (puedeDecidir) {
-      <section class="tarjeta decision" aria-labelledby="decision-t">
-        <h2 id="decision-t">Tu decisión</h2>
-        @if (e.decision; as dec) {
-          <p class="aviso" [class]="'aviso ' + (dec.valor === 'aprobado' ? 'exito' : 'error')">
-            <span class="ms" aria-hidden="true">{{ dec.valor === 'aprobado' ? 'thumb_up' : 'thumb_down' }}</span>
-            <span>{{ dec.valor === 'aprobado' ? 'Aprobado para continuar' : 'Rechazado' }} por {{ dec.por }} el {{ fecha(dec.fecha) }}.</span></p>
-        } @else {
-          <p class="suave">La recomendación del sistema es una propuesta; la decisión final es del área.</p>
-        }
-        <div class="fila">
-          <button type="button" class="btn primario" (click)="decidir('aprobado')"><span class="ms" aria-hidden="true">thumb_up</span>Aprobar para continuar</button>
-          <button type="button" class="btn" (click)="decidir('rechazado')"><span class="ms" aria-hidden="true">thumb_down</span>Rechazar expediente</button>
-        </div>
-      </section>
-    }
   } @else {
     @if (enProceso()) {
       <section class="tarjeta avance" role="status">
@@ -218,6 +202,6 @@
   <section class="tarjeta vacio">
     <span class="icono-caja"><span class="ms" aria-hidden="true">search_off</span></span>
     <div><h1>No encontramos ese expediente</h1>
-      <p class="suave">Puede que se haya cargado en otro navegador. Vuelve a la bandeja para ver los disponibles.</p></div>
+      <p class="suave">Puede que se haya cargado en otro navegador. Vuelve a tu inicio para ver los disponibles.</p></div>
   </section>
 }

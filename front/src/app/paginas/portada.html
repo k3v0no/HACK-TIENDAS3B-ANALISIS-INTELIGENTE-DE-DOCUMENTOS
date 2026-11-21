@@ -1,112 +1,128 @@
-<div class="pagina">
-  <header class="barra-sup">
-    <div class="marca3b"><span class="logo" aria-hidden="true">3B</span><span>Tiendas 3B<small>Revisión de expedientes</small></span></div>
-    <span class="seguro suave"><span class="ms" aria-hidden="true">lock</span>Los PDF se leen en equipos propios y no se suben a servicios externos</span>
-  </header>
-
-  <main>
-    <section class="hero">
-      <span class="sello"><span class="ms lleno" aria-hidden="true">bolt</span>Revisión asistida por agentes de IA</span>
-      <h1>Revisión de expedientes de inmuebles</h1>
-      <p class="lead">Sube las escrituras, el predial, el alineamiento y el uso de suelo. El sistema lee los documentos,
-        compara sus datos y propone si el inmueble puede continuar, con la evidencia de cada observación.</p>
-    </section>
-
-    <section class="acceso" aria-labelledby="ingresar-como">
-      <h2 id="ingresar-como">Ingresar como</h2>
-      <div class="perfiles" role="radiogroup" aria-labelledby="ingresar-como">
-        @for (a of accesos; track a.tipo) {
-          <button type="button" class="perfil" role="radio" [attr.aria-checked]="elegido() === a.tipo"
-                  [class.sel]="elegido() === a.tipo" (click)="elegir(a.tipo)">
-            <span class="cabeza">
+<header class="barra">
+  <div class="interior">
+    <a class="marca" href="/">
+      <span class="logo"><img src="icono-192.png" alt="" width="40" height="40"></span>
+      <span>Tiendas 3B<small>Revisión de expedientes</small></span>
+    </a>
+    <div class="ingresar">
+      <button type="button" class="btn-ingresar" aria-haspopup="menu" [attr.aria-expanded]="menuAbierto()" aria-controls="menu-ingresar"
+              (click)="alternarMenu()">
+        <span class="ms" aria-hidden="true">login</span>Ingresar<span class="ms flecha" aria-hidden="true">expand_more</span>
+      </button>
+      @if (menuAbierto()) {
+        <div #menu id="menu-ingresar" class="menu" role="menu" aria-label="Ingresar como" (keydown)="teclasMenu($event)">
+          <p class="menu-titulo">Ingresar como</p>
+          @for (a of accesos; track a.tipo) {
+            <button type="button" role="menuitem" class="opcion" (click)="elegir(a.tipo)">
               <span class="icono" [class]="'icono ' + a.color"><span class="ms" aria-hidden="true">{{ a.icono }}</span></span>
-              <span class="marca" aria-hidden="true"><span class="ms">check</span></span>
-            </span>
-            <span class="titulo">{{ a.tipo }}</span>
-            <span class="para suave">{{ a.para }}</span>
-            <span class="puntos">
-              @for (p of a.puntos; track p) { <span><span class="ms lleno" aria-hidden="true">check_circle</span>{{ p }}</span> }
-            </span>
-          </button>
-        }
-      </div>
-
-      @if (elegido(); as tipo) {
-        <div class="tarjeta login">
-          <div class="login-cabeza">
-            <span class="icono" [class]="'icono ' + acceso(tipo).color"><span class="ms" aria-hidden="true">{{ acceso(tipo).icono }}</span></span>
-            <div><h3>Ingresar como {{ tipo }}</h3><p class="suave pequeno">Escribe tu usuario y contraseña.</p></div>
-          </div>
-
-          @if (tipo === TIPO_ARRENDADOR) {
-            <div class="pestanas" role="tablist">
-              <button type="button" role="tab" [attr.aria-selected]="pestana() === 'ingresar'" [class.activa]="pestana() === 'ingresar'"
-                      (click)="pestana.set('ingresar'); error.set('')">Ingresar</button>
-              <button type="button" role="tab" [attr.aria-selected]="pestana() === 'crear'" [class.activa]="pestana() === 'crear'"
-                      (click)="pestana.set('crear'); error.set('')">Crear cuenta</button>
-            </div>
-          }
-
-          @if (pestana() === 'ingresar') {
-            <form (ngSubmit)="ingresar()">
-              <div class="campo">
-                <label for="login-usuario">Usuario</label>
-                <input id="login-usuario" class="entrada" name="usuario" [(ngModel)]="usuario" autocomplete="username">
-              </div>
-              <div class="campo">
-                <label for="login-clave">Contraseña</label>
-                <input id="login-clave" class="entrada" type="password" name="clave" [(ngModel)]="clave" autocomplete="current-password">
-              </div>
-              @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">lock</span>{{ error() }}</div> }
-              <button class="btn primario ancho" type="submit" [disabled]="ocupado()">
-                <span class="ms" aria-hidden="true">login</span>{{ ocupado() ? 'Ingresando…' : 'Ingresar' }}</button>
-            </form>
-
-          } @else {
-            <form (ngSubmit)="crearCuenta()">
-              <div class="campo">
-                <label for="nuevo-nombre">Nombre completo</label>
-                <input id="nuevo-nombre" class="entrada" name="nombre" [(ngModel)]="nombreNuevo" autocomplete="name">
-              </div>
-              <div class="campo">
-                <label for="nuevo-usuario">Usuario</label>
-                <input id="nuevo-usuario" class="entrada" name="usuarioNuevo" [(ngModel)]="usuarioNuevo" autocomplete="username"
-                       aria-describedby="ayuda-usuario">
-                <small id="ayuda-usuario">Con él ingresarás después.</small>
-              </div>
-              <div class="campo">
-                <label for="nuevo-clave">Contraseña</label>
-                <input id="nuevo-clave" class="entrada" type="password" name="claveNueva" [(ngModel)]="claveNueva"
-                       autocomplete="new-password" aria-describedby="ayuda-clave">
-                <small id="ayuda-clave">Al menos 6 caracteres.</small>
-              </div>
-              @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">error</span>{{ error() }}</div> }
-              <button class="btn primario ancho" type="submit" [disabled]="ocupado()">
-                <span class="ms" aria-hidden="true">person_add</span>Crear cuenta</button>
-            </form>
+              <span><b>{{ a.tipo }}</b><small>{{ a.para }}</small></span>
+              <span class="ms" aria-hidden="true">chevron_right</span>
+            </button>
           }
         </div>
       }
-    </section>
+    </div>
+  </div>
+</header>
 
-    <section class="ruta" aria-labelledby="ruta-titulo">
-      <h2 id="ruta-titulo">Así se revisa un expediente</h2>
-      <p class="suave">Cada documento se lee en orden y sus datos se comparan entre sí. Cada observación cita el documento
-        y el fragmento de donde sale.</p>
-      <ol>
-        @for (t of tipos; track t; let i = $index) {
-          <li>
-            <span class="icono"><span class="ms" aria-hidden="true">{{ DOC[t].icono }}</span></span>
-            <span><b>{{ t }}</b><small>Paso {{ i + 1 }}</small></span>
-          </li>
-        }
-        <li class="final">
-          <span class="icono"><span class="ms" aria-hidden="true">gavel</span></span>
-          <span><b>Dictamen</b>
-            <span class="salidas"><app-estado valor="Cumple" /><app-estado valor="Requiere revisión" /><app-estado valor="No cumple" /></span>
-          </span>
+<main class="pagina">
+  <section class="hero">
+    <h1>Revisión de expedientes de inmuebles</h1>
+    <p class="lead">El arrendador sube las escrituras, el predial, el alineamiento y el uso de suelo. El sistema lee los documentos,
+      compara sus datos y propone si el inmueble puede continuar, con la evidencia de cada observación.</p>
+  </section>
+
+  <section class="perfiles" aria-label="Perfiles">
+    @for (a of accesos; track a.tipo) {
+      <button type="button" class="perfil" (click)="elegir(a.tipo)">
+        <span class="icono" [class]="'icono ' + a.color"><span class="ms" aria-hidden="true">{{ a.icono }}</span></span>
+        <span class="titulo">{{ a.tipo }}</span>
+        <span class="para suave">{{ a.para }}</span>
+        <span class="puntos">
+          @for (p of a.puntos; track p) { <span><span class="ms lleno" aria-hidden="true">check_circle</span>{{ p }}</span> }
+        </span>
+        <span class="cta">Ingresar como {{ a.tipo.toLowerCase() }}<span class="ms" aria-hidden="true">arrow_forward</span></span>
+      </button>
+    }
+  </section>
+
+  <section class="ruta" aria-labelledby="ruta-titulo">
+    <h2 id="ruta-titulo">Así se revisa un expediente</h2>
+    <p class="suave">Cada documento se lee en orden y sus datos se comparan entre sí. Cada observación cita el documento
+      y el fragmento de donde sale.</p>
+    <ol>
+      @for (t of tipos; track t; let i = $index) {
+        <li>
+          <span class="icono"><span class="ms" aria-hidden="true">{{ DOC[t].icono }}</span></span>
+          <span><b>{{ t }}</b><small>Paso {{ i + 1 }}</small></span>
         </li>
-      </ol>
-    </section>
-  </main>
-</div>
+      }
+      <li class="final">
+        <span class="icono"><span class="ms" aria-hidden="true">gavel</span></span>
+        <span><b>Dictamen</b>
+          <span class="salidas"><app-estado valor="Cumple" /><app-estado valor="Requiere revisión" /><app-estado valor="No cumple" /></span>
+        </span>
+      </li>
+    </ol>
+  </section>
+</main>
+
+<dialog #dialogo class="dialogo" aria-labelledby="login-titulo">
+  @if (elegido(); as tipo) {
+    <div class="login-cabeza">
+      <span class="icono" [class]="'icono ' + acceso(tipo).color"><span class="ms" aria-hidden="true">{{ acceso(tipo).icono }}</span></span>
+      <div><h2 id="login-titulo">Ingresar como {{ tipo }}</h2><p class="suave pequeno">Escribe tu usuario y contraseña.</p></div>
+      <button type="button" class="btn chico fantasma cerrar" (click)="cerrar()" aria-label="Cerrar"><span class="ms" aria-hidden="true">close</span></button>
+    </div>
+
+    @if (tipo === TIPO_ARRENDADOR) {
+      <div class="pestanas" role="tablist">
+        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'ingresar'" [class.activa]="pestana() === 'ingresar'"
+                (click)="pestana.set('ingresar'); error.set('')">Ingresar</button>
+        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'crear'" [class.activa]="pestana() === 'crear'"
+                (click)="pestana.set('crear'); error.set('')">Crear cuenta</button>
+      </div>
+    }
+
+    @if (pestana() === 'ingresar') {
+      <form (ngSubmit)="ingresar()">
+        <div class="campo">
+          <label for="login-usuario">Usuario</label>
+          <input id="login-usuario" class="entrada" name="usuario" [(ngModel)]="usuario" autocomplete="username">
+        </div>
+        <div class="campo">
+          <label for="login-clave">Contraseña</label>
+          <input id="login-clave" class="entrada" type="password" name="clave" [(ngModel)]="clave" autocomplete="current-password">
+        </div>
+        @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">lock</span>{{ error() }}</div> }
+        <button class="btn primario ancho" type="submit" [disabled]="ocupado()">
+          <span class="ms" aria-hidden="true">login</span>{{ ocupado() ? 'Ingresando…' : 'Ingresar' }}</button>
+      </form>
+      @if (tipo !== TIPO_ARRENDADOR) {
+        <p class="suave pequeno nota">Las cuentas del equipo de 3B las da de alta el superusuario.</p>
+      }
+    } @else {
+      <form (ngSubmit)="crearCuenta()">
+        <div class="campo">
+          <label for="nuevo-nombre">Nombre completo</label>
+          <input id="nuevo-nombre" class="entrada" name="nombre" [(ngModel)]="nombreNuevo" autocomplete="name">
+        </div>
+        <div class="campo">
+          <label for="nuevo-usuario">Usuario</label>
+          <input id="nuevo-usuario" class="entrada" name="usuarioNuevo" [(ngModel)]="usuarioNuevo" autocomplete="username"
+                 aria-describedby="ayuda-usuario">
+          <small id="ayuda-usuario">Con él ingresarás después.</small>
+        </div>
+        <div class="campo">
+          <label for="nuevo-clave">Contraseña</label>
+          <input id="nuevo-clave" class="entrada" type="password" name="claveNueva" [(ngModel)]="claveNueva"
+                 autocomplete="new-password" aria-describedby="ayuda-clave">
+          <small id="ayuda-clave">Al menos 6 caracteres.</small>
+        </div>
+        @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">error</span>{{ error() }}</div> }
+        <button class="btn primario ancho" type="submit" [disabled]="ocupado()">
+          <span class="ms" aria-hidden="true">person_add</span>Crear cuenta</button>
+      </form>
+    }
+  }
+</dialog>

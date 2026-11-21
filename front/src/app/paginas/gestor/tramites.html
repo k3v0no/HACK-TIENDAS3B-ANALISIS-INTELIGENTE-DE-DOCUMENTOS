@@ -1,0 +1,97 @@
+<app-encabezado icono="assignment" titulo="Trámites"
+  descripcion="Cada tarea viene de un hallazgo, un permiso o un requisito del expediente. Termina cuando la evidencia nueva se analiza y resuelve el requisito." />
+
+<div class="tablero">
+  @for (c of columnas; track c.estado) {
+    <section class="columna" [attr.aria-labelledby]="'col-' + c.estado">
+      <header>
+        <h2 [id]="'col-' + c.estado"><span class="ms" aria-hidden="true">{{ c.icono }}</span>{{ ETIQUETA_ESTADO[c.estado] }}
+          <span class="n">{{ porEstado()[c.estado].length }}</span></h2>
+        <p class="suave pequeno">{{ c.ayuda }}</p>
+      </header>
+      @for (t of porEstado()[c.estado]; track t.id) {
+        <button type="button" class="tarjeta-tarea" (click)="abrir(t)">
+          <span class="inmueble">{{ titulo(t.exp) }}</span>
+          <b>{{ t.titulo }}</b>
+          <span class="etiquetas">
+            <span class="badge neutra">{{ t.causa }}</span>
+            @if (t.documento) { <span class="badge neutra"><span class="ms" aria-hidden="true">{{ DOC[t.documento].icono }}</span>{{ DOC[t.documento].corto }}</span> }
+          </span>
+          @if (t.estado === 'en_verificacion') {
+            @switch (resultado(t)) {
+              @case ('resuelto') { <span class="veredicto ok"><span class="ms" aria-hidden="true">check_circle</span>El hallazgo ya no aparece</span> }
+              @case ('persiste') { <span class="veredicto mal"><span class="ms" aria-hidden="true">error</span>El hallazgo persiste</span> }
+            }
+          }
+          <span class="pie suave pequeno">
+            @if (t.seguimiento) { <span><span class="ms" aria-hidden="true">event</span>Seguimiento {{ t.seguimiento }}</span> }
+            @else { <span>Desde {{ fecha(t.fecha, false) }}, de {{ t.creadoPor }}</span> }
+          </span>
+        </button>
+      } @empty { <p class="vacia suave pequeno">Sin tareas.</p> }
+    </section>
+  }
+</div>
+
+<dialog #dialogo class="dialogo" aria-labelledby="tarea-t" (close)="activaId.set(null)">
+  @if (activa(); as t) {
+    <header class="d-cabeza">
+      <div>
+        <p class="suave pequeno"><a [routerLink]="['/gestor/expediente', t.exp]" (click)="cerrar()">{{ titulo(t.exp) }}</a>, folio {{ t.exp }}</p>
+        <h2 id="tarea-t">{{ t.titulo }}</h2>
+      </div>
+      <button type="button" class="btn chico fantasma" (click)="cerrar()" aria-label="Cerrar"><span class="ms" aria-hidden="true">close</span></button>
+    </header>
+    <dl class="datos">
+      <div><dt>Estado</dt><dd>{{ ETIQUETA_ESTADO[t.estado] }}</dd></div>
+      <div><dt>Causa</dt><dd>{{ t.causa }}</dd></div>
+      <div><dt>Origen</dt><dd>{{ t.hallazgo ? 'Hallazgo «' + t.hallazgo.titulo + '» (' + t.hallazgo.reglaId + ')' : 'Requisito del expediente' }}</dd></div>
+      <div><dt>Creada por</dt><dd>{{ t.creadoPor }}, {{ fecha(t.fecha) }}</dd></div>
+    </dl>
+
+    @if (t.estado === 'pendiente' || t.estado === 'solicitado') {
+      <div class="campo">
+        <label for="t-doc">Documento requerido</label>
+        <select id="t-doc" class="entrada" [value]="documento()" (change)="cambiarDocumento($any($event.target).value)">
+          <option value="">Sin documento específico</option>
+          @for (d of tiposDoc; track d) { <option [value]="d">{{ d }}</option> }
+        </select>
+      </div>
+      <div class="campo">
+        <label for="t-texto">Solicitud de aclaración (editable)</label>
+        <textarea id="t-texto" class="entrada" rows="4" [value]="texto()" (input)="texto.set($any($event.target).value)"></textarea>
+        <div class="fila"><button type="button" class="btn chico" (click)="copiar()"><span class="ms" aria-hidden="true">content_copy</span>{{ copiado() ? 'Copiado' : 'Copiar texto' }}</button>
+          <small class="suave">Al registrar la gestión, el arrendador verá este texto en «Mis trámites».</small></div>
+      </div>
+    }
+    <div class="dos">
+      <div class="campo"><label for="t-seg">Fecha de seguimiento</label>
+        <input id="t-seg" type="date" class="entrada" [value]="seguimiento()" (input)="seguimiento.set($any($event.target).value)"></div>
+      <div class="campo"><label for="t-nota">Nota</label>
+        <input id="t-nota" class="entrada" [value]="nota()" (input)="nota.set($any($event.target).value)" placeholder="p. ej. Se llamó a la ventanilla de desarrollo urbano"></div>
+    </div>
+
+    @if (t.notas.length) {
+      <details><summary>Historial ({{ t.notas.length }})</summary>
+        <ul class="notas">@for (n of t.notas; track $index) { <li><b>{{ n.autor }}</b> <span class="suave pequeno">{{ fecha(n.fecha) }}</span><br>{{ n.texto }}</li> }</ul>
+      </details>
+    }
+
+    <div class="acciones">
+      @switch (t.estado) {
+        @case ('pendiente') { <button type="button" class="btn primario" (click)="registrarGestion()"><span class="ms" aria-hidden="true">outgoing_mail</span>Registrar gestión</button> }
+        @case ('solicitado') {
+          <button type="button" class="btn primario" (click)="registrarGestion()"><span class="ms" aria-hidden="true">save</span>Actualizar solicitud</button>
+          <button type="button" class="btn" (click)="guardar('recibido')"><span class="ms" aria-hidden="true">move_to_inbox</span>Marcar recibido</button>
+        }
+        @case ('recibido') { <button type="button" class="btn primario" (click)="guardar('en_verificacion')"><span class="ms" aria-hidden="true">fact_check</span>Pasar a verificación</button> }
+        @case ('en_verificacion') {
+          <button type="button" class="btn primario" (click)="guardar('resuelto')"><span class="ms" aria-hidden="true">task_alt</span>Marcar resuelto</button>
+          <button type="button" class="btn" (click)="guardar('pendiente')"><span class="ms" aria-hidden="true">undo</span>No resuelve: reabrir</button>
+        }
+        @default { <button type="button" class="btn" (click)="guardar('pendiente')"><span class="ms" aria-hidden="true">undo</span>Reabrir</button> }
+      }
+      <button type="button" class="btn fantasma" (click)="guardar()">Guardar nota</button>
+    </div>
+  }
+</dialog>

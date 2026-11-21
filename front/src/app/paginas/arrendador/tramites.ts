@@ -1,20 +1,26 @@
 // Seguimiento del arrendador. Nunca muestra hallazgos internos ni el dictamen (sección 10 del
-// plan): solo qué documentos ya cargó, en qué paso va el trámite y lo que puede resolver.
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
+// plan): solo qué documentos ya cargó, en qué va cada uno, lo que Tiendas 3B le pide y cómo
+// completar o sustituir un documento. Es el único perfil que sube documentos.
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CuentasService } from '../../core/cuentas.service';
 import { ExpedientesService } from '../../core/expedientes.service';
-import { DOC, Expediente, TIPOS_DOCUMENTO, TipoDocumento } from '../../core/modelos';
-import { Encabezado, FilaDocumento, Glifo, ListaDocs, fecha } from '../../ui/ui';
+import { FlujoService } from '../../core/flujo.service';
+import { DOC, Expediente, TIPOS_DOCUMENTO, Tarea, TipoDocumento } from '../../core/modelos';
+import { Encabezado, Glifo, fecha, tamano } from '../../ui/ui';
 
-interface Tramite {
-  exp: Expediente;
-  titulo: string;
-  filas: FilaDocumento[];
-  pendientes: string[];
-  etapa: number; // 0 enviados, 1 en revisión, 2 respuesta
-  cargados: number;
-}
+type EstadoDoc = 'falta' | 'recibido' | 'analisis' | 'procesado' | 'incidencia' | 'vencido';
+const ESTADO_DOC: Record<EstadoDoc, { texto: string; clase: string; icono: string }> = {
+  falta: { texto: 'Falta', clase: 'neutra', icono: 'remove' },
+  recibido: { texto: 'Recibido', clase: 'neutra', icono: 'inventory' },
+  analisis: { texto: 'En análisis', clase: 'pendiente', icono: 'progress_activity' },
+  procesado: { texto: 'Procesado', clase: 'cumple', icono: 'check' },
+  incidencia: { texto: 'Con incidencia', clase: 'revisar', icono: 'error' },
+  vencido: { texto: 'Vencido', clase: 'revisar', icono: 'schedule' },
+};
+
+interface FilaDoc { tipo: TipoDocumento; estado: EstadoDoc; archivos: string; version: number; nota: string }
+interface Tramite { exp: Expediente; titulo: string; filas: FilaDoc[]; solicitudes: Tarea[]; etapa: number; cargados: number }
 
 const ETAPAS = [
   { nombre: 'Documentos enviados', icono: 'send' },
@@ -24,83 +30,33 @@ const ETAPAS = [
 
 @Component({
   selector: 'app-tramites',
-  imports: [Encabezado, Glifo, ListaDocs, RouterLink],
+  imports: [Encabezado, Glifo, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <app-encabezado icono="folder_shared" titulo="Mis trámites"
-      descripcion="Qué documentos ya cargaste, en qué va la revisión y qué falta." />
-
-    @for (t of tramites(); track t.exp.id) {
-      <article class="tarjeta tramite">
-        <div class="fila entre cabeza">
-          <div>
-            <h2>{{ t.titulo }}</h2>
-            <p class="suave pequeno">Enviado el {{ fecha(t.exp.fecha, false) }}. Folio {{ t.exp.id }}.</p>
-          </div>
-          <div class="conteo"><app-glifo [tipos]="tipos(t.exp)" /><span class="suave pequeno">{{ t.cargados }} de 4 documentos cargados</span></div>
-        </div>
-
-        <ol class="etapas" aria-label="Avance del trámite">
-          @for (e of etapas; track e.nombre; let i = $index) {
-            <li [class.hecho]="i < t.etapa" [class.actual]="i === t.etapa" [attr.aria-current]="i === t.etapa ? 'step' : null">
-              <span class="riel"></span>
-              <span class="nombre"><span class="punto"><span class="ms" aria-hidden="true">{{ i < t.etapa ? 'check' : e.icono }}</span></span>{{ e.nombre }}</span>
-            </li>
-          }
-        </ol>
-
-        @if (t.pendientes.length) {
-          <div class="aviso alerta"><span class="ms" aria-hidden="true">assignment_late</span>
-            <div><b>Para continuar necesitamos:</b><ul>@for (p of t.pendientes; track p) { <li>{{ p }}</li> }</ul></div></div>
-        } @else if (t.etapa === 2) {
-          <div class="aviso exito"><span class="ms" aria-hidden="true">check_circle</span>Tus documentos están completos. Tiendas 3B te contactará con la respuesta.</div>
-        } @else {
-          <div class="aviso info"><span class="ms" aria-hidden="true">manage_search</span>Recibimos tus documentos y los estamos revisando.</div>
-        }
-        <app-lista-docs [filas]="t.filas" />
-      </article>
-    } @empty {
-      <section class="tarjeta vacio">
-        <span class="icono-caja"><span class="ms" aria-hidden="true">folder_open</span></span>
-        <div>
-          <h2>Todavía no has enviado documentos</h2>
-          <p class="suave">Cuando lo hagas, aquí verás qué documentos ya cargaste y en qué paso va tu trámite.</p>
-          <a class="btn primario" routerLink="/arrendador/enviar"><span class="ms" aria-hidden="true">upload_file</span>Enviar documentos</a>
-        </div>
-      </section>
-    }
-  `,
-  styles: `
-    .tramite { padding: 1.4rem; }
-    .cabeza { align-items: flex-start; }
-    h2 { font-size: 1.2rem; overflow-wrap: anywhere; }
-    .conteo { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
-    .etapas { list-style: none; padding: 0; margin: 1.2rem 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
-    .etapas li { display: flex; flex-direction: column; gap: .45rem; font-size: .88rem; color: var(--texto-suave); }
-    .riel { height: .3rem; border-radius: 99px; background: var(--borde); }
-    .nombre { display: flex; align-items: center; gap: .4rem; font-weight: 600; }
-    .punto { width: 1.7rem; height: 1.7rem; border-radius: 50%; display: grid; place-items: center; flex: none;
-      border: 1.5px solid var(--borde); background: var(--superficie); font-size: 1rem; }
-    .hecho, .actual { color: var(--texto); }
-    .hecho .riel, .hecho .punto { background: var(--verde); border-color: var(--verde); }
-    .actual .riel { background: var(--rojo-accion); }
-    .actual .punto { border-color: var(--rojo-accion); color: var(--rojo-accion); }
-    .aviso { margin-bottom: .6rem; }
-    .vacio { display: flex; gap: 1rem; align-items: flex-start; padding: 1.5rem; }
-    .vacio p { margin: .25rem 0 1rem; }
-    @media (max-width: 560px) { .etapas { grid-template-columns: 1fr; } }
-  `,
+  templateUrl: './tramites.html',
+  styleUrl: './tramites.css',
 })
 export class Tramites {
   private readonly cuentas = inject(CuentasService);
   private readonly expedientes = inject(ExpedientesService);
+  private readonly flujo = inject(FlujoService);
   protected readonly etapas = ETAPAS;
+  protected readonly ESTADO_DOC = ESTADO_DOC;
+  protected readonly DOC = DOC;
   protected readonly fecha = fecha;
+  protected readonly tamano = tamano;
   protected readonly tipos = ExpedientesService.tipos;
+
+  /** Documento que se está completando o sustituyendo: «expediente|tipo». */
+  protected readonly subiendo = signal<string | null>(null);
+  protected readonly archivos = signal<File[]>([]);
+  protected readonly ocupado = signal(false);
+  protected readonly aviso = signal('');
+  protected readonly error = signal('');
 
   protected readonly tramites = computed<Tramite[]>(() => {
     const usuario = this.cuentas.cuenta()?.usuario;
-    return this.expedientes.lista().filter((e) => e.cuenta === usuario).map((e) => this.armar(e));
+    const tareas = this.flujo.tareas();
+    return this.expedientes.lista().filter((e) => e.cuenta === usuario).map((e) => this.armar(e, tareas));
   });
 
   constructor() {
@@ -108,37 +64,74 @@ export class Tramites {
     this.expedientes.sincronizarEnProceso();
     const reloj = setInterval(() => {
       if (this.expedientes.lista().some(ExpedientesService.enProceso)) this.expedientes.sincronizarEnProceso();
-    }, 5000);
+    }, 4000);
     inject(DestroyRef).onDestroy(() => clearInterval(reloj));
   }
 
-  private armar(e: Expediente): Tramite {
-    const porTipo = new Map<TipoDocumento, string[]>();
-    for (const a of e.archivos) porTipo.set(a.tipo, [...(porTipo.get(a.tipo) ?? []), a.nombre]);
-    const vencidos = new Set<string>();
-    if (e.dictamen) {
-      const tipoDe = new Map(e.dictamen.documentos.map((d) => [d.id, d.tipo]));
-      for (const v of e.dictamen.validaciones) {
-        if (v.resultado === 'no_cumple' && /vigen/i.test(v.nombre) && v.documento) vencidos.add(tipoDe.get(v.documento) ?? '');
+  private armar(e: Expediente, tareas: Tarea[]): Tramite {
+    const d = e.dictamen;
+    const enProceso = ExpedientesService.enProceso(e);
+    const filas: FilaDoc[] = TIPOS_DOCUMENTO.map((tipo) => {
+      const vig = e.archivos.filter((a) => a.tipo === tipo && a.vigente);
+      if (!vig.length) return { tipo, estado: 'falta', archivos: 'No enviado', version: 0, nota: DOC[tipo].que };
+      const version = vig[0].version;
+      const archivos = vig.map((a) => a.nombre).join(', ');
+      const ultima = e.corridas.at(-1);
+      const analizado = !!d && !!ultima?.dictamen && ultima.archivos.some((a) => a.tipo === tipo && a.version === version);
+      if (enProceso) return { tipo, estado: 'analisis', archivos, version, nota: 'Lo estamos leyendo.' };
+      if (!analizado || !d) return { tipo, estado: 'recibido', archivos, version, nota: 'Lo recibimos; falta revisarlo.' };
+      const doc = d.documentos.find((x) => x.tipo === tipo);
+      const regla = { 'Alineamiento y Número Oficial': 'A2', 'Uso de Suelo': 'U3', Predial: 'P2' }[tipo as string];
+      if (regla && d.validaciones.some((v) => v.reglaId === regla && v.resultado === 'no_cumple')) {
+        return { tipo, estado: 'vencido', archivos, version, nota: 'El documento ya no está vigente: envía uno actualizado.' };
       }
-    }
-    const filas: FilaDocumento[] = [];
-    const pendientes: string[] = [];
-    for (const tipo of TIPOS_DOCUMENTO) {
-      const nombres = porTipo.get(tipo);
-      if (!nombres) {
-        filas.push({ tipo, detalle: 'No enviado', estado: 'no' });
-        pendientes.push(`Enviar ${tipo.toLowerCase()}: ${DOC[tipo].que.toLowerCase()}.`);
-      } else if (vencidos.has(tipo)) {
-        filas.push({ tipo, detalle: nombres.join(', '), estado: 'vencido' });
-        pendientes.push(`Renovar ${tipo.toLowerCase()}: el documento que enviaste ya venció.`);
-      } else {
-        filas.push({ tipo, detalle: nombres.join(', '), estado: 'si' });
+      if (doc && !doc.legible) return { tipo, estado: 'incidencia', archivos, version, nota: 'No se pudo leer bien: envía una copia más legible.' };
+      if (d.validaciones.some((v) => v.id === `tipo-${doc?.id}`)) {
+        return { tipo, estado: 'incidencia', archivos, version, nota: 'Parece otro tipo de documento: revisa que sea el correcto.' };
       }
-    }
+      return { tipo, estado: 'procesado', archivos, version, nota: 'Revisado.' };
+    });
+    const solicitudes = tareas.filter((t) => t.exp === e.id && t.estado === 'solicitado');
+    const pendientesDoc = filas.some((f) => f.estado !== 'procesado');
     return {
-      exp: e, titulo: ExpedientesService.titulo(e), filas, pendientes,
-      etapa: e.dictamen && !pendientes.length ? 2 : 1, cargados: porTipo.size,
+      exp: e, titulo: ExpedientesService.titulo(e), filas, solicitudes,
+      etapa: d && !enProceso && !pendientesDoc && !solicitudes.length ? 2 : 1,
+      cargados: filas.filter((f) => f.estado !== 'falta').length,
     };
+  }
+
+  protected abrirCarga(exp: string, tipo: TipoDocumento): void {
+    this.subiendo.set(`${exp}|${tipo}`);
+    this.archivos.set([]);
+    this.error.set('');
+    this.aviso.set('');
+  }
+
+  protected elegir(ev: Event): void {
+    const entrada = ev.target as HTMLInputElement;
+    const validos = Array.from(entrada.files ?? []).filter((f) => /\.(pdf|jpe?g|png)$/i.test(f.name));
+    this.archivos.set(validos);
+    if (validos.length < (entrada.files?.length ?? 0)) this.error.set('Solo se aceptan PDF, JPG o PNG.');
+  }
+
+  protected async enviar(exp: string, tipo: TipoDocumento): Promise<void> {
+    if (!this.archivos().length) { this.error.set('Elige al menos un archivo.'); return; }
+    this.ocupado.set(true);
+    this.error.set('');
+    try {
+      const reemplaza = this.expedientes.obtener(exp)?.archivos.some((a) => a.tipo === tipo);
+      await this.expedientes.agregarDocumentos(exp, { [tipo]: this.archivos() });
+      let analizado = false;
+      if (await this.expedientes.revisarConexion(true)) {
+        await this.expedientes.iniciarAnalisis(exp, reemplaza ? `Nueva versión de ${tipo.toLowerCase()}` : `Se agregó ${tipo.toLowerCase()}`)
+          .then(() => { analizado = true; }).catch(() => undefined);
+      }
+      this.subiendo.set(null);
+      this.aviso.set(`Recibimos ${tipo.toLowerCase()}.` + (analizado ? ' Ya lo estamos revisando.' : ' Tiendas 3B lo revisará.'));
+    } catch (e) {
+      this.error.set(`No se pudo enviar: ${(e as Error).message}.`);
+    } finally {
+      this.ocupado.set(false);
+    }
   }
 }

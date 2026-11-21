@@ -3,10 +3,12 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { CuentasService, PERFIL_INFO, TIPO_ARRENDADOR } from '../core/cuentas.service';
+import { FlujoService } from '../core/flujo.service';
+import { MENU } from '../core/navegacion';
 import { ExpedientesService } from '../core/expedientes.service';
 import { Glifo } from '../ui/ui';
 
-interface Enlace { ruta: string; texto: string; icono: string }
+interface Enlace { ruta: string; texto: string; icono: string; pendientes: number }
 
 @Component({
   selector: 'app-shell',
@@ -16,18 +18,20 @@ interface Enlace { ruta: string; texto: string; icono: string }
     <a class="saltar" href="#contenido">Saltar al contenido</a>
     <div class="marco" [class.menu-abierto]="menuAbierto()">
       <header class="barra-movil">
-        <div class="marca3b"><span class="logo" aria-hidden="true">3B</span><span>Tiendas 3B</span></div>
+        <div class="marca3b"><span class="logo"><img src="icono-192.png" alt="" width="34" height="34"></span><span>Tiendas 3B</span></div>
         <button type="button" class="btn chico" (click)="menuAbierto.set(!menuAbierto())" [attr.aria-expanded]="menuAbierto()"
                 aria-controls="lateral"><span class="ms" aria-hidden="true">{{ menuAbierto() ? 'close' : 'menu' }}</span>Menú</button>
       </header>
 
       <aside id="lateral" class="lateral">
-        <div class="marca3b"><span class="logo" aria-hidden="true">3B</span><span>Tiendas 3B<small>Revisión de expedientes</small></span></div>
+        <div class="marca3b"><span class="logo"><img src="icono-192.png" alt="" width="34" height="34"></span><span>Tiendas 3B<small>Revisión de expedientes</small></span></div>
+        <p class="rol"><span class="ms" aria-hidden="true">{{ iconoRol() }}</span>Vista de {{ nombreRol() }}</p>
 
         <nav aria-label="Principal">
           @for (e of enlaces(); track e.ruta) {
             <a [routerLink]="e.ruta" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: false }" ariaCurrentWhenActive="page">
-              <span class="ms" aria-hidden="true">{{ e.icono }}</span>{{ e.texto }}</a>
+              <span class="ms" aria-hidden="true">{{ e.icono }}</span>{{ e.texto }}
+              @if (e.pendientes) { <span class="pendientes" [attr.aria-label]="e.pendientes + ' pendientes'">{{ e.pendientes }}</span> }</a>
           }
         </nav>
 
@@ -62,8 +66,13 @@ interface Enlace { ruta: string; texto: string; icono: string }
     .lateral { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 1.4rem; padding: 1.25rem;
       background: var(--superficie); border-right: 1px solid var(--borde); overflow-y: auto; }
     .marca3b { display: inline-flex; align-items: center; gap: .6rem; font-weight: 700; }
-    .marca3b .logo { width: 2.4rem; height: 2.4rem; border-radius: 10px; background: var(--rojo); color: #fff; display: grid;
-      place-items: center; font-family: var(--titulos); font-weight: 800; font-size: 1.2rem; letter-spacing: -0.04em; flex: none; }
+    .marca3b .logo { width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; flex: none; }
+    .marca3b .logo img { width: 2.4rem; height: 2.4rem; display: block; }
+    .rol { display: flex; align-items: center; gap: .45rem; margin: -.6rem 0 0; padding: .45rem .7rem; border-radius: 10px;
+      background: var(--texto); color: #fff; font-size: .85rem; font-weight: 600; }
+    .rol .ms { font-size: 1.15rem; }
+    .pendientes { margin-left: auto; min-width: 1.4rem; text-align: center; font-size: .75rem; padding: .05rem .4rem; border-radius: 99px;
+      background: var(--rojo-accion); color: #fff; }
     .marca3b small { display: block; font-weight: 500; color: var(--texto-suave); font-size: .78rem; }
     nav { display: grid; gap: .25rem; }
     nav a { display: flex; align-items: center; gap: .7rem; padding: .6rem .75rem; border-radius: 10px; color: var(--texto);
@@ -95,6 +104,7 @@ interface Enlace { ruta: string; texto: string; icono: string }
 export class Shell {
   private readonly cuentas = inject(CuentasService);
   private readonly expedientes = inject(ExpedientesService);
+  private readonly flujo = inject(FlujoService);
   private readonly router = inject(Router);
 
   protected readonly cuenta = this.cuentas.cuenta;
@@ -109,23 +119,26 @@ export class Shell {
     return propios.length ? ExpedientesService.tipos(propios[0]) : null;
   });
 
-  protected readonly enlaces = computed<Enlace[]>(() => {
-    if (!this.cuenta()) return [];
+  /** Pendientes del área del usuario (para el contador del menú). */
+  private readonly pendientesArea = computed(() => {
+    const area = { 'Analista de expansión': 'Expansión', Jurídico: 'Jurídico', 'Gestor de trámites': 'Trámites' }[this.cuenta()?.perfil ?? ''];
+    if (area) return this.flujo.abiertas().filter((t) => t.area === area).length;
     if (this.esArrendador()) {
-      return [
-        { ruta: '/arrendador/enviar', texto: 'Enviar documentos', icono: 'upload_file' },
-        { ruta: '/arrendador/tramites', texto: 'Mis trámites', icono: 'folder_shared' },
-      ];
+      const propios = new Set(this.expedientes.lista().filter((e) => e.cuenta === this.cuenta()?.usuario).map((e) => e.id));
+      return this.flujo.abiertas().filter((t) => t.estado === 'solicitado' && propios.has(t.exp)).length;
     }
-    const enlaces: Enlace[] = [];
-    if (this.cuentas.puede('expedientes.ver')) enlaces.push({ ruta: '/trabajador/bandeja', texto: 'Bandeja', icono: 'inbox' });
-    if (this.cuentas.puede('expedientes.cargar')) enlaces.push({ ruta: '/trabajador/cargar', texto: 'Cargar expediente', icono: 'upload_file' });
-    if (this.cuentas.puede('usuarios.admin')) {
-      enlaces.push({ ruta: '/admin/usuarios', texto: 'Usuarios', icono: 'person_add' });
-      enlaces.push({ ruta: '/admin/trabajadores', texto: 'Trabajadores', icono: 'badge' });
-    }
-    return enlaces;
+    return 0;
   });
+
+  protected readonly enlaces = computed<Enlace[]>(() => {
+    const c = this.cuenta();
+    if (!c) return [];
+    const menu = MENU[c.tipo === TIPO_ARRENDADOR ? TIPO_ARRENDADOR : c.perfil] ?? [];
+    return menu.filter((v) => this.cuentas.puede(v.permiso))
+      .map((v, i) => ({ ruta: v.ruta, texto: v.texto, icono: v.icono, pendientes: i === (this.esArrendador() ? 1 : 0) ? this.pendientesArea() : 0 }));
+  });
+  protected readonly nombreRol = computed(() => this.esArrendador() ? 'arrendador' : (this.cuenta()?.perfil ?? '').replace('Gerente', 'Gerencia'));
+  protected readonly iconoRol = computed(() => PERFIL_INFO[this.cuenta()?.perfil ?? '']?.icono ?? 'person');
 
   constructor() {
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe(() => this.menuAbierto.set(false));

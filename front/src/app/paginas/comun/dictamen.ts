@@ -1,13 +1,14 @@
-// Detalle de un expediente. Lo que se muestra depende de los permisos del área: un dato sin
-// permiso aparece oculto (también en los fragmentos citados que salen de ese dato) y el visor
-// de documentos solo está disponible con «documentos.ver».
+// Dictamen completo: hallazgos, datos extraídos y validaciones con su evidencia. Es la consulta
+// compartida a la que llegan las vistas de cada rol. Lo que se muestra depende de los permisos del
+// área: un dato sin permiso aparece oculto (también en sus fragmentos citados) y el visor de
+// documentos solo está disponible con «documentos.ver».
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Location, NgTemplateOutlet } from '@angular/common';
 import { CuentasService } from '../../core/cuentas.service';
 import { ExpedientesService } from '../../core/expedientes.service';
 import { DOC, Evidencia, Resultado, TIPOS_DOCUMENTO, TipoDocumento } from '../../core/modelos';
 import { contarHallazgos } from '../../core/permisos-vista';
+import { Visibilidad } from '../../core/visibilidad';
 import { Estado, FilaDocumento, Fragmento, Glifo, ListaDocs, fecha, pct } from '../../ui/ui';
 import { Visor } from '../../ui/visor';
 
@@ -20,16 +21,18 @@ const SEVERIDAD = {
 type Pestana = 'hallazgos' | 'datos' | 'validaciones';
 
 @Component({
-  selector: 'app-expediente',
-  imports: [RouterLink, NgTemplateOutlet, Estado, Glifo, ListaDocs, Fragmento, Visor],
+  selector: 'app-dictamen',
+  imports: [NgTemplateOutlet, Estado, Glifo, ListaDocs, Fragmento, Visor],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './expediente.html',
-  styleUrl: './expediente.css',
+  templateUrl: './dictamen.html',
+  styleUrl: './dictamen.css',
 })
-export class ExpedienteDetalle {
+export class DictamenCompleto {
   readonly id = input.required<string>();
 
   private readonly cuentas = inject(CuentasService);
+  private readonly visible = inject(Visibilidad);
+  private readonly location = inject(Location);
   protected readonly expedientes = inject(ExpedientesService);
   protected readonly DOC = DOC;
   protected readonly SEVERIDAD = SEVERIDAD;
@@ -38,8 +41,7 @@ export class ExpedienteDetalle {
   protected readonly OCULTO = 'Oculto por permisos';
 
   protected readonly puedeDocs = this.cuentas.puede('documentos.ver');
-  protected readonly puedeAnalizar = this.cuentas.puede('expedientes.cargar');
-  protected readonly puedeDecidir = this.cuentas.puede('dictamen.decidir');
+  protected readonly puedeAnalizar = this.cuentas.puede('expedientes.analizar');
 
   protected readonly pestana = signal<Pestana>('hallazgos');
   protected readonly evidencia = signal<Evidencia | null>(null);
@@ -63,7 +65,7 @@ export class ExpedienteDetalle {
     const e = this.exp();
     if (!e) return [];
     return TIPOS_DOCUMENTO.map((tipo) => {
-      const n = e.archivos.filter((a) => a.tipo === tipo).map((a) => a.nombre);
+      const n = e.archivos.filter((a) => a.tipo === tipo && a.vigente).map((a) => a.nombre);
       return { tipo, detalle: n.length ? n.join(', ') : 'No se envió', estado: n.length ? 'si' : 'no' } as FilaDocumento;
     });
   });
@@ -75,14 +77,6 @@ export class ExpedienteDetalle {
     const c = { cumple: 0, revisar: 0, no_cumple: 0 };
     for (const v of this.d()?.validaciones ?? []) c[v.resultado]++;
     return c;
-  });
-  /** De qué campo sale cada línea citada, para ocultar fragmentos de datos sin permiso. */
-  private readonly campoDeLinea = computed(() => {
-    const m = new Map<string, string>();
-    for (const [doc, datos] of Object.entries(this.d()?.datos ?? {})) {
-      for (const dato of datos) for (const ev of dato.evidencia) m.set(`${doc}#${ev.linea}`, dato.campo);
-    }
-    return m;
   });
   protected readonly documentoActivo = computed(() => this.d()?.documentos.find((x) => x.id === this.evidencia()?.documento));
   protected readonly urlPagina = (b: string, doc: string, p: number) => this.expedientes.imagenPagina(b, doc, p);
@@ -100,12 +94,15 @@ export class ExpedienteDetalle {
   }
 
   protected ve(campo: string): boolean {
-    return this.cuentas.veCampo(campo);
+    return this.visible.campo(campo);
   }
 
   protected veEvidencia(ev: Evidencia): boolean {
-    const campo = this.campoDeLinea().get(`${ev.documento}#${ev.linea}`);
-    return !campo || this.ve(campo);
+    return this.visible.evidencia(this.d(), ev);
+  }
+
+  protected volver(): void {
+    this.location.back();
   }
 
   protected verEnDocumento(ev: Evidencia): void {
@@ -123,15 +120,11 @@ export class ExpedienteDetalle {
     this.ocupado.set(true);
     this.error.set('');
     try {
-      await this.expedientes.iniciarAnalisis(this.id());
+      await this.expedientes.iniciarAnalisis(this.id(), 'Reintento del análisis');
     } catch (e) {
       this.error.set(`No se pudo enviar a análisis: ${(e as Error).message}. Revisa que el servicio de análisis esté encendido e inténtalo de nuevo.`);
     } finally {
       this.ocupado.set(false);
     }
-  }
-
-  protected decidir(valor: 'aprobado' | 'rechazado'): void {
-    this.expedientes.decidir(this.id(), valor, this.cuentas.cuenta()!.nombre);
   }
 }

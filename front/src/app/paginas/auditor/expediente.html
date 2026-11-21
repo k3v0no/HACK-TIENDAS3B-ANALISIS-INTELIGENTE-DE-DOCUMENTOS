@@ -1,0 +1,113 @@
+@if (exp(); as e) {
+  <app-cabecera-expediente [exp]="e" vista="Vista de auditoría (solo lectura)" icono="policy" volver="/auditor/casos" volverTexto="Auditoría">
+    <button type="button" class="btn chico" (click)="exportar()"><span class="ms" aria-hidden="true">download</span>Exportar historial</button>
+  </app-cabecera-expediente>
+
+  <div class="rejilla">
+    <!-- Línea de tiempo -->
+    <section class="tarjeta tiempo" aria-labelledby="tl-t">
+      <h2 id="tl-t"><span class="ms" aria-hidden="true">timeline</span>Línea de tiempo</h2>
+      <div class="filtros">
+        <div class="campo"><label for="desde">Desde</label><input id="desde" type="date" class="entrada" [value]="desde()" (input)="desde.set($any($event.target).value)"></div>
+        <div class="campo"><label for="hasta">Hasta</label><input id="hasta" type="date" class="entrada" [value]="hasta()" (input)="hasta.set($any($event.target).value)"></div>
+        <label class="interruptor"><input type="checkbox" [checked]="soloPersonas()" (change)="soloPersonas.set($any($event.target).checked)">Solo lo que declaró una persona</label>
+      </div>
+      <ol class="linea">
+        @for (x of eventos(); track x.id) {
+          <li [class.sistema]="x.actor === 'Sistema'" [class.global]="!x.exp">
+            <span class="punto"><span class="ms" aria-hidden="true">{{ ICONO[x.tipo] }}</span></span>
+            <div>
+              <p class="quien"><b>{{ x.actor }}</b>
+                <span class="badge" [class]="'badge ' + (x.actor === 'Sistema' ? 'neutra' : 'revisar')">{{ x.actor === 'Sistema' ? 'Automático' : x.perfil }}</span>
+                <span class="suave pequeno">{{ fecha(x.fecha) }}</span></p>
+              <p class="pequeno">{{ x.detalle }}</p>
+            </div>
+          </li>
+        } @empty { <li class="vacio suave">No hay eventos en ese periodo.</li> }
+      </ol>
+    </section>
+
+    <div class="columna">
+      <!-- Reconstruir una corrida -->
+      <section class="tarjeta" aria-labelledby="run-t">
+        <h2 id="run-t"><span class="ms" aria-hidden="true">history</span>Reconstruir un análisis</h2>
+        @if (terminadas().length) {
+          <div class="corridas" role="group" aria-label="Elegir análisis">
+            @for (c of terminadas(); track c.n) {
+              <button type="button" class="corrida" [class.activa]="corrida()?.n === c.n" (click)="nCorrida.set(c.n)">
+                <b>Análisis {{ c.n }}</b><small>{{ fecha(c.fecha) }}</small></button>
+            }
+          </div>
+          @if (corrida(); as c) {
+            <dl class="ficha">
+              <div><dt>Resultado automático</dt><dd><b>{{ c.dictamen!.recomendacion }}</b> (confianza {{ c.dictamen!.nivelConfianza }})</dd></div>
+              <div><dt>Motivo de la corrida</dt><dd>{{ c.motivo }}</dd></div>
+              <div><dt>Archivos analizados</dt><dd>@for (a of c.archivos; track $index) { <span class="chip">{{ a.tipo }} v{{ a.version }}</span> }</dd></div>
+              <div><dt>Reglas aplicadas</dt><dd>Versión {{ c.reglasVersion }}</dd></div>
+              <div><dt>Hallazgos</dt><dd>@for (h of c.dictamen!.hallazgos; track h.id) { <span class="chip">{{ h.reglaId }}</span> } @empty { Ninguno }</dd></div>
+              <div><dt>Explicación de ese día</dt><dd>{{ c.dictamen!.resumen }}</dd></div>
+            </dl>
+          }
+        } @else { <p class="suave">Este expediente aún no tiene análisis terminados.</p> }
+      </section>
+
+      <!-- Comparar dos análisis -->
+      @if (comparacion(); as cmp) {
+        <section class="tarjeta" aria-labelledby="cmp-t">
+          <h2 id="cmp-t"><span class="ms" aria-hidden="true">compare_arrows</span>Comparar dos análisis</h2>
+          <div class="dos">
+            <div class="campo"><label for="ca">Antes</label>
+              <select id="ca" class="entrada" (change)="nA.set(numero($any($event.target).value))">
+                @for (c of terminadas(); track c.n) { <option [value]="c.n" [selected]="c.n === cmp.a.n">Análisis {{ c.n }}: {{ c.dictamen!.recomendacion }}</option> }</select></div>
+            <div class="campo"><label for="cb">Después</label>
+              <select id="cb" class="entrada" (change)="nB.set(numero($any($event.target).value))">
+                @for (c of terminadas(); track c.n) { <option [value]="c.n" [selected]="c.n === cmp.b.n">Análisis {{ c.n }}: {{ c.dictamen!.recomendacion }}</option> }</select></div>
+          </div>
+          <p class="cambio"><b>{{ cmp.a.dictamen!.recomendacion }}</b><span class="ms" aria-hidden="true">arrow_forward</span><b>{{ cmp.b.dictamen!.recomendacion }}</b></p>
+          <p class="pequeno"><span class="ms" aria-hidden="true">info</span>Por qué cambió: {{ cmp.causas.join('; ') }}.</p>
+          <div class="tres">
+            <div><h3 class="ok">Se resolvieron ({{ cmp.resueltos.length }})</h3>@for (h of cmp.resueltos; track h.id) { <p class="pequeno">{{ tituloHallazgo(h) }}</p> } @empty { <p class="suave pequeno">Ninguno</p> }</div>
+            <div><h3 class="sigue">Persistieron ({{ cmp.persistieron.length }})</h3>@for (h of cmp.persistieron; track h.id) { <p class="pequeno">{{ tituloHallazgo(h) }}</p> } @empty { <p class="suave pequeno">Ninguno</p> }</div>
+            <div><h3 class="nuevo">Aparecieron ({{ cmp.aparecieron.length }})</h3>@for (h of cmp.aparecieron; track h.id) { <p class="pequeno">{{ tituloHallazgo(h) }}</p> } @empty { <p class="suave pequeno">Ninguno</p> }</div>
+          </div>
+        </section>
+      }
+
+      <!-- Cadena de evidencia -->
+      @if (cadena(); as cad) {
+        <section class="tarjeta" aria-labelledby="cad-t">
+          <h2 id="cad-t"><span class="ms" aria-hidden="true">account_tree</span>Cadena de evidencia</h2>
+          <div class="campo"><label for="hc">Hallazgo del análisis {{ corrida()?.n }}</label>
+            <select id="hc" class="entrada" [value]="cad.h.id" (change)="hallazgoCadena.set($any($event.target).value)">
+              @for (h of cad.d.hallazgos; track h.id) { <option [value]="h.id" [selected]="h.id === cad.h.id">{{ tituloHallazgo(h) }}</option> }</select></div>
+          <ol class="cadena">
+            <li><span class="paso">Recomendación</span><b>{{ cad.d.recomendacion }}</b></li>
+            <li><span class="paso">Regla</span><b>{{ cad.h.reglaId }}: {{ regla(cad.h.reglaId)?.nombre ?? cad.h.titulo }}</b>
+              <small>Efecto si no se cumple: {{ regla(cad.h.reglaId)?.efecto ?? 'Requiere revisión' }}. {{ cad.h.explicacion }}</small></li>
+            <li><span class="paso">Campo extraído</span>
+              @for (c of cad.campos; track $index) { <b>{{ c.dato.campo }} ({{ c.doc }}): {{ c.dato.valor ?? 'sin valor' }}</b> } @empty { <small>La regla no cita un campo concreto.</small> }</li>
+            <li><span class="paso">Fragmento original</span>
+              @for (ev of cad.h.evidencia; track $index) {
+                <span class="frag">«{{ ev.texto }}» <small>{{ cad.nombreDoc(ev.documento) }}, página {{ ev.pagina }}, línea {{ ev.linea }}</small></span>
+              } @empty { <small>Sin cita directa.</small> }
+              @if (cad.h.evidencia.length) { <button type="button" class="btn chico" (click)="citas.set(cad.h.evidencia)"><span class="ms" aria-hidden="true">plagiarism</span>Ver en el documento</button> }</li>
+          </ol>
+        </section>
+      }
+
+      <!-- Intervenciones -->
+      <section class="tarjeta" aria-labelledby="int-t">
+        <h2 id="int-t"><span class="ms" aria-hidden="true">group</span>Sistema y personas</h2>
+        <ul class="intervenciones">
+          @for (x of intervenciones(); track x.id) {
+            <li [class.humana]="x.humana"><span class="ms" aria-hidden="true">{{ x.humana ? 'person' : 'smart_toy' }}</span>
+              <span><b>{{ x.actor }}</b>&ngsp;<span class="suave pequeno">{{ fecha(x.fecha) }}</span><br><span class="pequeno">{{ x.detalle }}</span></span></li>
+          } @empty { <li class="suave">Sin intervenciones.</li> }
+        </ul>
+      </section>
+    </div>
+  </div>
+  <app-cajon-evidencia [evidencias]="citas()" [dictamen]="dictamenCitas()" (cerrar)="citas.set([])" />
+} @else {
+  <section class="tarjeta"><h1>No encontramos ese expediente</h1><p class="suave">Vuelve a <a routerLink="/auditor/casos">Auditoría</a>.</p></section>
+}

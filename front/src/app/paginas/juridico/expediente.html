@@ -1,0 +1,162 @@
+@if (exp(); as e) {
+  <app-cabecera-expediente [exp]="e" vista="Vista de Jurídico" icono="gavel" volver="/juridico/casos" volverTexto="Casos jurídicos">
+    @if (d()) { <a class="btn chico" [routerLink]="['/expediente', e.id]"><span class="ms" aria-hidden="true">description</span>Dictamen completo</a> }
+  </app-cabecera-expediente>
+
+  @if (d(); as dic) {
+    @if (estadoVal(); as v) {
+      <div class="estado-val" [class]="'estado-val ' + v.estado">
+        <span class="ms" aria-hidden="true">{{ v.estado === 'validado' ? 'verified' : 'pending' }}</span>
+        <span><b>{{ v.texto }}</b><small>Recomendación automática original: {{ dic.recomendacion }}. La validación jurídica se consulta junto a ella, no la sustituye.</small></span>
+      </div>
+    }
+    @if (aviso()) { <div class="aviso exito" role="status"><span class="ms" aria-hidden="true">check_circle</span>{{ aviso() }}</div> }
+
+    <!-- Comparador -->
+    <section class="tarjeta comparador" aria-labelledby="comp-t">
+      <div class="cabeza-seccion">
+        <h2 id="comp-t"><span class="ms" aria-hidden="true">table_view</span>Comparador entre documentos</h2>
+        <p class="suave pequeno">Elige una fila para ver sus fragmentos lado a lado. Tolerancia de superficie: {{ tolerancia() }} %.</p>
+      </div>
+      <div class="tabla-envoltura">
+        <table class="matriz">
+          <thead>
+            <tr><th scope="col">Campo</th>
+              @for (doc of dic.documentos; track doc.id) { <th scope="col"><span class="ms" aria-hidden="true">{{ iconoDoc(doc.tipo) }}</span>{{ doc.tipo }}</th> }
+              <th scope="col">Resultado</th></tr>
+          </thead>
+          <tbody>
+            @for (f of filas(); track f.clave) {
+              <tr [class.activa]="filaActiva()?.clave === f.clave" [class]="f.estado" tabindex="0" (click)="seleccionar(f)" (keydown.enter)="seleccionar(f)"
+                  [attr.aria-label]="f.etiqueta + ': ' + ESTADO_FILA[f.estado].texto">
+                <th scope="row">{{ f.etiqueta }}@if (f.reglaId) { <small>Regla {{ f.reglaId }}</small> }</th>
+                @for (c of f.celdas; track c.documento) {
+                  <td [class.vacia]="!c.valor">
+                    @if (c.correccion) {
+                      <span class="corregido">{{ c.valor }}</span>
+                      <small class="auto">Lectura automática: <s>{{ c.auto ?? 'sin lectura' }}</s></small>
+                      <small class="quien"><span class="ms" aria-hidden="true">edit_note</span>Corregido por {{ c.correccion.autor }}</small>
+                      <button type="button" class="enlace" (click)="quitarCorreccion(c, $event)">Quitar corrección</button>
+                    } @else if (c.valor) {
+                      <span>{{ c.valor }}</span>
+                      @if (!c.sustentado) { <small class="alerta"><span class="ms" aria-hidden="true">warning</span>No sustentado en el texto</small> }
+                      <button type="button" class="enlace" (click)="abrirCorreccion(f, c, $event)">Corregir</button>
+                    } @else {
+                      <span class="suave">Ausente</span>
+                      <button type="button" class="enlace" (click)="abrirCorreccion(f, c, $event)">Registrar valor</button>
+                    }
+                  </td>
+                }
+                <td class="resultado">
+                  <span class="badge" [class]="'badge ' + ESTADO_FILA[f.estado].clase"><span class="ms" aria-hidden="true">{{ ESTADO_FILA[f.estado].icono }}</span>{{ ESTADO_FILA[f.estado].texto }}</span>
+                  <small>{{ f.nota }}</small>
+                  @if (f.reglaResultado) { <small>Sistema: regla {{ f.reglaId }} {{ f.reglaResultado === 'cumple' ? 'cumple' : f.reglaResultado === 'no_cumple' ? 'con discrepancia' : 'no evaluable' }}</small> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (corrigiendo(); as c) {
+      <section class="tarjeta panel" aria-labelledby="corr-t">
+        <h2 id="corr-t">Corregir «{{ c.fila.etiqueta }}» en {{ nombreDoc(c.celda.documento) }}</h2>
+        <p class="suave pequeno">Se conservan la lectura automática («{{ c.celda.auto ?? 'sin lectura' }}») y tu corrección, con tu nombre y la fecha.
+          Si el documento de verdad dice otra cosa, no corrijas: abre una aclaración documental en el hallazgo.</p>
+        <div class="dos">
+          <div class="campo"><label for="corr-valor">Valor correcto</label>
+            <input id="corr-valor" class="entrada" [value]="valorCorregido" (input)="valorCorregido = $any($event.target).value"></div>
+          <div class="campo"><label for="corr-motivo">Motivo</label>
+            <input id="corr-motivo" class="entrada" placeholder="p. ej. el OCR leyó 18-8; el escaneo dice 18-B" [value]="motivo" (input)="motivo = $any($event.target).value"></div>
+        </div>
+        @if (errorCorreccion()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">error</span>{{ errorCorreccion() }}</div> }
+        <div class="fila"><button type="button" class="btn primario" (click)="guardarCorreccion()"><span class="ms" aria-hidden="true">save</span>Registrar corrección</button>
+          <button type="button" class="btn" (click)="corrigiendo.set(null)">Cancelar</button></div>
+      </section>
+    }
+
+    @if (filaActiva(); as f) {
+      <section id="lado-a-lado" class="tarjeta lado" aria-labelledby="lado-t">
+        <div class="cabeza-seccion">
+          <h2 id="lado-t"><span class="ms" aria-hidden="true">compare</span>{{ f.etiqueta }}: evidencia lado a lado</h2>
+          <button type="button" class="btn chico fantasma" (click)="filaActiva.set(null)" aria-label="Cerrar"><span class="ms" aria-hidden="true">close</span></button>
+        </div>
+        @if (ladoALado().length) {
+          <div class="visores" [class.uno]="ladoALado().length === 1">
+            @for (x of ladoALado(); track x.celda.documento) {
+              <div><app-visor [ev]="x.ev" [documento]="doc(x.celda.documento)" [urlBase]="urlPagina" /></div>
+            }
+          </div>
+        } @else {
+          <p class="suave">Ningún documento trae cita para este campo.</p>
+        }
+      </section>
+    }
+
+    <!-- Hallazgos con regla aplicada -->
+    <section class="hallazgos" aria-labelledby="hal-t">
+      <h2 id="hal-t" class="titulo-seccion"><span class="ms" aria-hidden="true">rule</span>Hallazgos y regla aplicada</h2>
+      @for (h of dic.hallazgos; track h.id) {
+        <article class="tarjeta hallazgo" [class]="'tarjeta hallazgo ' + h.severidad">
+          <div class="h-cabeza">
+            <span class="regla-id">{{ h.reglaId }}</span>
+            <div><h3>{{ h.titulo }}</h3><p class="suave pequeno">{{ causaDe(h.reglaId) }}</p></div>
+            @if (validacionDe(h); as v) {
+              <span class="badge" [class]="'badge ' + (v.estado === 'confirmado' ? 'no_cumple' : 'cumple')">
+                <span class="ms" aria-hidden="true">{{ v.estado === 'confirmado' ? 'gavel' : 'do_not_disturb_on' }}</span>{{ v.estado === 'confirmado' ? 'Confirmado' : 'Descartado' }}</span>
+            }
+          </div>
+          <dl class="regla">
+            <div><dt>Condición evaluada</dt><dd>{{ regla(h.reglaId)?.nombre ?? h.titulo }}</dd></div>
+            <div><dt>Consecuencia si no se cumple</dt><dd>{{ regla(h.reglaId)?.efecto ?? 'Requiere revisión' }}</dd></div>
+            <div><dt>Documentos utilizados</dt><dd>{{ documentosUsados(h) }}</dd></div>
+            <div><dt>Por qué afectó el resultado</dt><dd>{{ h.explicacion }}</dd></div>
+            <div><dt>Incertidumbre</dt><dd>{{ incertidumbre(h) }}</dd></div>
+          </dl>
+          @if (h.evidencia.length) {
+            <details><summary>Citas ({{ h.evidencia.length }})</summary>
+              <app-citas [evidencias]="h.evidencia" [dictamen]="dic" [abrible]="false" /></details>
+          }
+          @if (validacionDe(h); as v) {
+            <p class="validacion"><span class="ms" aria-hidden="true">history_edu</span>{{ v.estado === 'confirmado' ? 'Confirmado' : 'Descartado' }} por {{ v.autor }} el {{ fecha(v.fecha) }}.
+              @if (v.observacion) { «{{ v.observacion }}» } @if (v.derivadoA) { Derivado a {{ v.derivadoA }}. }</p>
+          }
+          @if (validando()?.h?.id === h.id) {
+            <div class="panel-validar">
+              <div class="campo"><label [for]="'obs-' + h.id">Observación jurídica</label>
+                <textarea [id]="'obs-' + h.id" class="entrada" rows="2" [value]="observacion" (input)="observacion = $any($event.target).value"></textarea></div>
+              <div class="campo"><label [for]="'der-' + h.id">Derivar la acción a</label>
+                <select [id]="'der-' + h.id" class="entrada" [value]="derivar" (change)="derivar = $any($event.target).value">
+                  <option value="">Nadie por ahora</option><option value="Expansión">Expansión</option><option value="Trámites">Trámites</option></select></div>
+              <div class="fila"><button type="button" class="btn primario" (click)="guardarValidacion()">
+                <span class="ms" aria-hidden="true">save</span>{{ validando()!.estado === 'confirmado' ? 'Confirmar hallazgo' : 'Descartar hallazgo' }}</button>
+                <button type="button" class="btn" (click)="validando.set(null)">Cancelar</button></div>
+            </div>
+          } @else {
+            <div class="fila acciones">
+              <button type="button" class="btn chico" (click)="abrirValidacion(h, 'confirmado')"><span class="ms" aria-hidden="true">gavel</span>Confirmar</button>
+              <button type="button" class="btn chico" (click)="abrirValidacion(h, 'descartado')"><span class="ms" aria-hidden="true">do_not_disturb_on</span>Descartar</button>
+              <button type="button" class="btn chico fantasma" (click)="abrirAclaracion(h)"><span class="ms" aria-hidden="true">help</span>Aclaración documental</button>
+            </div>
+          }
+        </article>
+      } @empty { <p class="suave">El sistema no encontró hallazgos. Puedes verificar el expediente en el comparador.</p> }
+    </section>
+
+    @if (usoSuelo().length) {
+      <section class="tarjeta" aria-labelledby="uso-t">
+        <h2 id="uso-t" class="titulo-seccion"><span class="ms" aria-hidden="true">storefront</span>Uso de suelo: lo que autoriza</h2>
+        <dl class="regla">
+          @for (x of usoSuelo(); track x!.nombre) {
+            <div><dt>{{ x!.campo }}</dt><dd>{{ x!.valor ?? 'No se indica' }}</dd></div>
+          }
+        </dl>
+      </section>
+    }
+  } @else {
+    <section class="tarjeta"><p class="suave">Este expediente aún no tiene análisis. Cuando termine, aquí estará el comparador.</p></section>
+  }
+} @else {
+  <section class="tarjeta"><h1>No encontramos ese caso</h1><p class="suave">Vuelve a <a routerLink="/juridico/casos">Casos jurídicos</a>.</p></section>
+}

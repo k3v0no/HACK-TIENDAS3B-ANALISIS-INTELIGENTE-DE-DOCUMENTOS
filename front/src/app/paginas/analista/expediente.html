@@ -1,0 +1,153 @@
+@if (exp(); as e) {
+  <app-cabecera-expediente [exp]="e" vista="Vista del analista de expansión" icono="travel_explore"
+    volver="/analista/inmuebles" volverTexto="Mis inmuebles">
+    @if (d()) { <a class="btn chico" [routerLink]="['/expediente', e.id]"><span class="ms" aria-hidden="true">description</span>Dictamen completo</a> }
+  </app-cabecera-expediente>
+
+  @if (bloqueo(); as b) {
+    <section class="impide" aria-labelledby="impide-t">
+      <p id="impide-t" class="pregunta"><span class="ms" aria-hidden="true">block</span>¿Qué impide avanzar?</p>
+      <p class="frase">{{ b.frase }}</p>
+      <p class="detalle">{{ b.detalle }}</p>
+      <div class="acciones">
+        @if (b.hallazgo?.evidencia?.length) {
+          <button type="button" class="btn claro" (click)="citas.set(b.hallazgo!.evidencia)"><span class="ms" aria-hidden="true">plagiarism</span>Ver las citas</button>
+        }
+        @if (b.hallazgo && b.documento) {
+          <button type="button" class="btn claro" (click)="abrirAccion('pedir', b.hallazgo, b.documento)"><span class="ms" aria-hidden="true">mark_email_unread</span>Pedir {{ DOC[b.documento].corto.toLowerCase() }} al arrendador</button>
+        }
+        @if (b.hallazgo) {
+          <button type="button" class="btn claro" (click)="abrirAccion('turnar', b.hallazgo)"><span class="ms" aria-hidden="true">gavel</span>Turnar a Jurídico</button>
+        }
+        @if (!d() && !enProceso() && puedeAnalizar) {
+          <button type="button" class="btn claro" [disabled]="ocupado()" (click)="analizar()"><span class="ms" aria-hidden="true">play_arrow</span>{{ ocupado() ? 'Enviando…' : 'Analizar expediente' }}</button>
+        }
+      </div>
+      @if (siguiente(); as s) {
+        <p class="siguiente"><span class="ms" aria-hidden="true">{{ s.icono }}</span><span>Siguiente acción: <b>{{ s.area }}</b>, {{ s.accion.charAt(0).toLowerCase() + s.accion.slice(1) }}</span></p>
+      }
+    </section>
+  }
+  @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">cloud_off</span>{{ error() }}</div> }
+  @if (aviso()) { <div class="aviso exito" role="status"><span class="ms" aria-hidden="true">check_circle</span>{{ aviso() }}</div> }
+
+  @if (accion(); as a) {
+    <section class="tarjeta panel-accion" aria-labelledby="accion-t">
+      <h2 id="accion-t">
+        @switch (a.tipo) { @case ('turnar') { Turnar a Jurídico } @case ('pedir') { Pedir un documento al arrendador } @default { Solicitar una aclaración a Trámites } }
+      </h2>
+      @if (a.hallazgo) { <p class="suave pequeno">Queda vinculado al hallazgo «{{ a.hallazgo.titulo }}» ({{ a.hallazgo.reglaId }}).</p> }
+      @if (a.tipo === 'pedir') {
+        <div class="campo">
+          <label for="accion-doc">Documento que se pide</label>
+          <select id="accion-doc" class="entrada" [value]="a.documento ?? ''" (change)="accion.set({ tipo: a.tipo, hallazgo: a.hallazgo, documento: $any($event.target).value })">
+            @for (t of ['Escrituras', 'Predial', 'Alineamiento y Número Oficial', 'Uso de Suelo']; track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+        </div>
+      }
+      <div class="campo">
+        <label for="accion-texto">{{ a.tipo === 'pedir' ? 'Mensaje para el arrendador' : 'Nota para quien lo recibe' }}</label>
+        <textarea id="accion-texto" class="entrada" rows="3" [value]="texto()" (input)="texto.set($any($event.target).value)"></textarea>
+      </div>
+      <div class="fila">
+        <button type="button" class="btn primario" (click)="confirmar()"><span class="ms" aria-hidden="true">send</span>
+          @switch (a.tipo) { @case ('turnar') { Turnar } @case ('pedir') { Enviar solicitud } @default { Enviar aclaración } }</button>
+        <button type="button" class="btn" (click)="accion.set(null)">Cancelar</button>
+      </div>
+    </section>
+  }
+
+  <div class="rejilla">
+    <div class="columna">
+      @if (d(); as dic) {
+        <section class="tarjeta" aria-labelledby="rec-t">
+          <h2 id="rec-t">Recomendación inicial</h2>
+          <p class="recomendacion" [class]="'recomendacion ' + (dic.recomendacion === 'Cumple' ? 'cumple' : dic.recomendacion === 'No cumple' ? 'no_cumple' : 'revisar')">
+            <span class="ms lleno" aria-hidden="true">{{ dic.recomendacion === 'Cumple' ? 'check_circle' : dic.recomendacion === 'No cumple' ? 'cancel' : 'error' }}</span>
+            <span><b>{{ dic.recomendacion }}</b><small>Confianza {{ dic.nivelConfianza }} ({{ pct(dic.confianza) }})</small></span>
+          </p>
+          <p class="resumen">{{ dic.resumen }}</p>
+          @if (dic.hallazgos.length) {
+            <p class="suave pequeno">Lo determinó: {{ regla(dic.hallazgos[0].reglaId)?.nombre ?? dic.hallazgos[0].titulo }}
+              ({{ dic.hallazgos[0].reglaId }}). Causas: {{ causasTxt() }}.</p>
+          }
+        </section>
+
+        <section class="tarjeta" aria-labelledby="pend-t">
+          <h2 id="pend-t">Pendientes <span class="n">{{ dic.hallazgos.length }}</span></h2>
+          @for (h of dic.hallazgos; track h.id) {
+            <article class="pendiente" [class]="'pendiente ' + h.severidad">
+              <p class="titulo"><b>{{ h.titulo }}</b><span class="badge neutra">{{ causaDe(h.reglaId) }}</span></p>
+              <p class="pequeno">{{ h.explicacion }}</p>
+              @if (tareaDe(h); as t) {
+                <p class="estado-tarea"><span class="ms" aria-hidden="true">assignment_ind</span>{{ t.area }}: {{ ETIQUETA_ESTADO[t.estado] }}. Lo turnó {{ t.creadoPor }}.</p>
+              } @else {
+                <div class="fila">
+                  @if (h.evidencia.length) { <button type="button" class="btn chico fantasma" (click)="citas.set(h.evidencia)"><span class="ms" aria-hidden="true">plagiarism</span>Citas</button> }
+                  <button type="button" class="btn chico" (click)="abrirAccion('pedir', h, DOC_DE(h))"><span class="ms" aria-hidden="true">mark_email_unread</span>Pedir documento</button>
+                  <button type="button" class="btn chico" (click)="abrirAccion('aclarar', h)"><span class="ms" aria-hidden="true">help</span>Aclaración</button>
+                  <button type="button" class="btn chico" (click)="abrirAccion('turnar', h)"><span class="ms" aria-hidden="true">gavel</span>Turnar a Jurídico</button>
+                </div>
+              }
+            </article>
+          } @empty { <p class="suave">Sin pendientes.</p> }
+        </section>
+      } @else {
+        <section class="tarjeta"><h2>Recomendación inicial</h2>
+          <p class="suave">{{ enProceso() ? 'El análisis está en curso: ' + (e.back?.etapa || 'en cola') + '.' : 'Aún no hay análisis de este expediente.' }}</p></section>
+      }
+    </div>
+
+    <div class="columna">
+      <section class="tarjeta" aria-labelledby="inv-t">
+        <h2 id="inv-t">Inventario documental</h2>
+        <ul class="inventario">
+          @for (i of inventario(); track i.tipo) {
+            <li [class]="i.estado">
+              <span class="icono"><span class="ms" aria-hidden="true">{{ DOC[i.tipo].icono }}</span></span>
+              <span class="nombre"><b>{{ i.tipo }}</b>
+                @switch (i.estado) {
+                  @case ('falta') { <small>Tipo obligatorio que falta</small> }
+                  @case ('identificar') { <small>Requiere identificación: el contenido parece de otro tipo</small> }
+                  @case ('ilegible') { <small>Detectado, pero con lectura insuficiente</small> }
+                  @case ('recibido') { <small>Recibido, sin analizar</small> }
+                  @default { <small>Detectado por el sistema</small> }
+                }
+                @if (i.duplicado) { <small class="dup">{{ i.archivos.length }} archivos de este tipo: {{ nombres(i.archivos) }}. Revisa si son versiones o documentos distintos.</small> }
+                @if (i.anteriores) { <small>{{ i.anteriores }} versión(es) anterior(es) conservada(s)</small> }
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (ficha().length) {
+        <section class="tarjeta" aria-labelledby="ficha-t">
+          <h2 id="ficha-t">Ficha extraída</h2>
+          <dl class="ficha">
+            @for (c of ficha(); track c.etiqueta) {
+              <div>
+                <dt>{{ c.etiqueta }}</dt>
+                <dd>
+                  @if (c.oculto) { <span class="oculto-dato"><span class="ms" aria-hidden="true">lock</span> {{ visible.OCULTO }}</span> }
+                  @else if (!c.valor) { <span class="suave">No se encontró</span> }
+                  @else {
+                    <span class="valor">{{ c.valor }}</span>
+                    @if (c.normalizado && /[a-zA-Z]/.test(c.valor) && c.normalizado !== c.valor.toLowerCase()) { <small class="norm">Normalizado: {{ c.normalizado }}</small> }
+                    @if (!c.sustentado) { <small class="alerta-dato"><span class="ms" aria-hidden="true">warning</span>El verificador no lo encontró en el texto citado</small> }
+                    <button type="button" class="fuente" (click)="citas.set(c.evidencia)" [disabled]="!c.evidencia.length">
+                      <span class="ms" aria-hidden="true">link</span>Fuente: {{ c.fuente }}</button>
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        </section>
+      }
+    </div>
+  </div>
+
+  <app-cajon-evidencia [evidencias]="citas()" [dictamen]="d()" (cerrar)="citas.set([])" />
+} @else {
+  <section class="tarjeta"><h1>No encontramos ese inmueble</h1><p class="suave">Vuelve a <a routerLink="/analista/inmuebles">Mis inmuebles</a>.</p></section>
+}

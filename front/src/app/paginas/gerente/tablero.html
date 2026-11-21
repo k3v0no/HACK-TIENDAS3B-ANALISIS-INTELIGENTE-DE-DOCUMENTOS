@@ -1,0 +1,68 @@
+<app-encabezado icono="insights" titulo="Tablero de portafolio"
+  descripcion="Cuántos inmuebles hay en cada etapa y quién atiende cada uno. Elige un contador para ver los inmuebles que lo forman." />
+
+<section class="kpis" aria-label="Indicadores">
+  <div class="bloque recomendacion">
+    <h2>Recomendación automática</h2>
+    <div class="barra-apilada" role="img"
+         [attr.aria-label]="kpi().cumple + ' cumplen, ' + kpi().revisar + ' requieren revisión, ' + kpi().noCumple + ' no cumplen, ' + kpi().sinDictamen + ' sin dictamen'">
+      <i class="cumple" [style.width.%]="pctDe(kpi().cumple)"></i><i class="revisar" [style.width.%]="pctDe(kpi().revisar)"></i>
+      <i class="no_cumple" [style.width.%]="pctDe(kpi().noCumple)"></i><i class="pendiente" [style.width.%]="pctDe(kpi().sinDictamen)"></i>
+    </div>
+    <div class="contadores">
+      <button type="button" class="kpi cumple" [class.activo]="activo({ tipo: 'rec', valor: 'Cumple' })" (click)="alternar({ tipo: 'rec', valor: 'Cumple' })">
+        <b>{{ kpi().cumple }}</b><span>Cumplen</span></button>
+      <button type="button" class="kpi revisar" [class.activo]="activo({ tipo: 'rec', valor: 'Requiere revisión' })" (click)="alternar({ tipo: 'rec', valor: 'Requiere revisión' })">
+        <b>{{ kpi().revisar }}</b><span>Requieren revisión</span></button>
+      <button type="button" class="kpi no_cumple" [class.activo]="activo({ tipo: 'rec', valor: 'No cumple' })" (click)="alternar({ tipo: 'rec', valor: 'No cumple' })">
+        <b>{{ kpi().noCumple }}</b><span>No cumplen</span></button>
+      <button type="button" class="kpi pendiente" [class.activo]="activo({ tipo: 'rec', valor: 'Sin analizar' })" (click)="alternar({ tipo: 'rec', valor: 'Sin analizar' })">
+        <b>{{ kpi().sinDictamen }}</b><span>Sin dictamen</span></button>
+    </div>
+  </div>
+  <div class="bloque">
+    <h2>Validación jurídica</h2>
+    <div class="contadores uno">
+      <button type="button" class="kpi" [class.activo]="activo({ tipo: 'val' })" (click)="alternar({ tipo: 'val' })">
+        <b>{{ kpi().esperanJuridico }}</b><span>Esperan validación</span></button>
+    </div>
+  </div>
+  <div class="bloque">
+    <h2>Decisión de expansión</h2>
+    <div class="contadores">
+      @for (k of ['avanza', 'espera', 'descartado']; track k) {
+        <button type="button" class="kpi" [class.activo]="activo({ tipo: 'dec', valor: k })" (click)="alternar({ tipo: 'dec', valor: k })">
+          <b>{{ $any(kpi())[k] }}</b><span>{{ $any(DECISION)[k] }}</span></button>
+      }
+    </div>
+  </div>
+</section>
+
+<div class="motivos" role="group" aria-label="Filtrar por motivo de bloqueo">
+  <span class="suave pequeno">Motivo de bloqueo:</span>
+  <button type="button" class="chip" [class.activo]="!motivo()" (click)="motivo.set(null)">Todos</button>
+  @for (m of causasLista; track m) {
+    <button type="button" class="chip" [class.activo]="motivo() === m" [attr.aria-pressed]="motivo() === m" (click)="motivo.set(motivo() === m ? null : m)">{{ m }}</button>
+  }
+</div>
+
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="sr-only">Inmuebles del portafolio</caption>
+    <thead><tr><th scope="col">Inmueble</th><th scope="col">Recomendación</th><th scope="col">Jurídico</th><th scope="col">Decisión</th><th scope="col">Responsable de la siguiente acción</th></tr></thead>
+    <tbody>
+      @for (x of visibles(); track x.e.id) {
+        <tr>
+          <td data-titulo="Inmueble"><a class="enlace" [routerLink]="['/gerente/expediente', x.e.id]">{{ x.titulo }}</a><small class="suave">{{ x.bloqueo }}</small></td>
+          <td data-titulo="Recomendación"><app-estado [valor]="x.estado" /></td>
+          <td data-titulo="Jurídico"><span class="pequeno">{{ x.val.texto }}</span></td>
+          <td data-titulo="Decisión">@if (x.decision; as d) { <span class="badge" [class]="'badge ' + (d.valor === 'avanza' ? 'cumple' : d.valor === 'descartado' ? 'no_cumple' : 'revisar')">{{ DECISION[d.valor] }}</span> }
+            @else { <span class="suave pequeno">Sin decisión</span> }</td>
+          <td data-titulo="Responsable"><span class="resp"><span class="ms" aria-hidden="true">{{ x.sig.icono }}</span><span><b>{{ x.sig.area }}</b><small>{{ x.sig.accion }}</small></span></span></td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5" class="vacia">Ningún inmueble con ese filtro.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>

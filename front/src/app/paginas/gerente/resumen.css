@@ -1,0 +1,31 @@
+/* Lectura ejecutiva: tres cifras grandes, una frase y la decisión. */
+.tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; margin-bottom: 1rem; }
+.dato-grande { display: grid; gap: .25rem; align-content: start; background: var(--superficie); border: 1px solid var(--borde);
+  border-top: 4px solid var(--texto); border-radius: var(--radio); padding: 1rem 1.1rem; box-shadow: var(--sombra); }
+.etq { font-size: .82rem; color: var(--texto-suave); font-weight: 600; }
+.dato-grande b { font-family: var(--titulos); font-size: 1.35rem; line-height: 1.2; }
+.explicacion { margin-bottom: 1rem; }
+.explicacion h2, .tarjeta h2 { font-size: 1.05rem; margin-bottom: .6rem; }
+.frase { font-family: var(--titulos); font-size: 1.25rem; font-weight: 700; margin-bottom: .3rem; }
+.rejilla { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.rejilla .tarjeta + .tarjeta { margin-top: 0; }
+.hallazgo { display: grid; gap: .3rem; padding: .6rem 0 .6rem .8rem; border-left: 3px solid var(--borde-fuerte); }
+.hallazgo + .hallazgo { margin-top: .5rem; }
+.hallazgo.alta { border-left-color: var(--rojo); } .hallazgo.media { border-left-color: var(--ambar); }
+.pie { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.fuente { border: 0; background: none; padding: 0; color: var(--rojo-texto); font-size: .84rem; font-weight: 600; cursor: pointer; display: inline-flex; gap: .25rem; align-items: center; }
+.enlace { display: inline-block; margin-top: .8rem; color: var(--rojo-texto); font-weight: 600; }
+.paso { display: flex; gap: .3rem; align-items: flex-start; padding: .35rem 0; }
+.paso .ms { color: var(--rojo-accion); }
+.decision { margin-top: 1rem; }
+.opciones { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0 1rem; }
+.opcion { display: inline-flex; align-items: center; gap: .45rem; padding: .6rem 1rem; border-radius: 999px; border: 1px solid var(--borde);
+  cursor: pointer; font-weight: 600; background: var(--superficie); }
+.opcion.sel { background: var(--texto); border-color: var(--texto); color: #fff; }
+.opcion:focus-within { outline: 2px solid var(--texto); outline-offset: 2px; }
+textarea.entrada { resize: vertical; }
+.aviso { margin-bottom: .8rem; }
+.decision h3 { font-size: .95rem; margin: 1.2rem 0 .4rem; }
+.historial { margin: 0; padding-left: 1.1rem; display: grid; gap: .4rem; font-size: .92rem; }
+.historial .suave { display: block; }
+@media (max-width: 900px) { .tres, .rejilla { grid-template-columns: 1fr; } }

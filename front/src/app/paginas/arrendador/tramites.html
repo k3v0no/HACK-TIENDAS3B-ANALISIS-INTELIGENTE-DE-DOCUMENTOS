@@ -1,0 +1,86 @@
+<app-encabezado icono="folder_shared" titulo="Mis trámites"
+  descripcion="Qué documentos ya cargaste, en qué va cada uno y lo que Tiendas 3B te pide para continuar." />
+
+@if (aviso()) { <div class="aviso exito" role="status"><span class="ms" aria-hidden="true">check_circle</span>{{ aviso() }}</div> }
+
+@for (t of tramites(); track t.exp.id) {
+  <article class="tarjeta tramite">
+    <div class="cabeza">
+      <div>
+        <h2>{{ t.titulo }}</h2>
+        <p class="suave pequeno">Enviado el {{ fecha(t.exp.fecha, false) }}. Folio {{ t.exp.id }}.</p>
+      </div>
+      <div class="conteo"><app-glifo [tipos]="tipos(t.exp)" /><span class="suave pequeno">{{ t.cargados }} de 4 documentos</span></div>
+    </div>
+
+    <ol class="etapas" aria-label="Avance del trámite">
+      @for (e of etapas; track e.nombre; let i = $index) {
+        <li [class.hecho]="i < t.etapa" [class.actual]="i === t.etapa" [attr.aria-current]="i === t.etapa ? 'step' : null">
+          <span class="riel"></span>
+          <span class="nombre"><span class="punto"><span class="ms" aria-hidden="true">{{ i < t.etapa ? 'check' : e.icono }}</span></span>{{ e.nombre }}</span>
+        </li>
+      }
+    </ol>
+
+    @if (t.solicitudes.length) {
+      <section class="solicitudes" aria-label="Lo que Tiendas 3B te pide">
+        <h3><span class="ms" aria-hidden="true">mark_email_unread</span>Tiendas 3B te pide</h3>
+        @for (s of t.solicitudes; track s.id) {
+          <div class="solicitud">
+            <p>{{ s.solicitud || s.titulo }}</p>
+            <p class="suave pequeno">Solicitado el {{ fecha(s.fecha, false) }}.</p>
+            @if (s.documento) {
+              <button type="button" class="btn chico primario" (click)="abrirCarga(t.exp.id, s.documento)">
+                <span class="ms" aria-hidden="true">upload_file</span>Enviar {{ DOC[s.documento].corto.toLowerCase() }}</button>
+            }
+          </div>
+        }
+      </section>
+    } @else if (t.etapa === 2) {
+      <div class="aviso exito"><span class="ms" aria-hidden="true">check_circle</span>Tus documentos están completos. Tiendas 3B te contactará con la respuesta.</div>
+    }
+
+    <ul class="docs">
+      @for (f of t.filas; track f.tipo) {
+        <li>
+          <span class="icono" [class]="'icono ' + f.estado"><span class="ms" aria-hidden="true">{{ DOC[f.tipo].icono }}</span></span>
+          <span class="nombre">
+            <b>{{ f.tipo }} @if (f.version > 1) { <span class="version">versión {{ f.version }}</span> }</b>
+            <small>{{ f.archivos }}</small>
+            <small class="nota">{{ f.nota }}</small>
+          </span>
+          <span class="badge" [class]="'badge ' + ESTADO_DOC[f.estado].clase"><span class="ms" aria-hidden="true">{{ ESTADO_DOC[f.estado].icono }}</span>{{ ESTADO_DOC[f.estado].texto }}</span>
+          @if (f.estado !== 'analisis') {
+            <button type="button" class="btn chico" (click)="abrirCarga(t.exp.id, f.tipo)">
+              <span class="ms" aria-hidden="true">{{ f.estado === 'falta' ? 'add' : 'sync' }}</span>{{ f.estado === 'falta' ? 'Enviar' : 'Sustituir' }}</button>
+          }
+        </li>
+        @if (subiendo() === t.exp.id + '|' + f.tipo) {
+          <li class="carga">
+            <label class="zona">
+              <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" (change)="elegir($event)" class="sr-only">
+              <span class="ms" aria-hidden="true">upload_file</span>
+              <span>@if (archivos().length) { <b>{{ archivos().length }} archivo(s) listo(s)</b> } @else { <b>Elige el archivo de {{ f.tipo.toLowerCase() }}</b> }
+                <br><span class="suave pequeno">PDF o fotos legibles (JPG, PNG).@if (f.estado !== 'falta') { La versión anterior se conserva. }</span></span>
+            </label>
+            @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">error</span>{{ error() }}</div> }
+            <div class="fila">
+              <button type="button" class="btn primario" [disabled]="ocupado()" (click)="enviar(t.exp.id, f.tipo)">
+                <span class="ms" aria-hidden="true">send</span>{{ ocupado() ? 'Enviando…' : 'Enviar ' + DOC[f.tipo].corto.toLowerCase() }}</button>
+              <button type="button" class="btn" (click)="subiendo.set(null)">Cancelar</button>
+            </div>
+          </li>
+        }
+      }
+    </ul>
+  </article>
+} @empty {
+  <section class="tarjeta vacio">
+    <span class="icono-caja"><span class="ms" aria-hidden="true">folder_open</span></span>
+    <div>
+      <h2>Todavía no has enviado documentos</h2>
+      <p class="suave">Cuando lo hagas, aquí verás qué documentos ya cargaste y en qué va tu trámite.</p>
+      <a class="btn primario" routerLink="/arrendador/enviar"><span class="ms" aria-hidden="true">upload_file</span>Enviar documentos</a>
+    </div>
+  </section>
+}

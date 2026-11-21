@@ -1,0 +1,52 @@
+.rejilla { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1.2rem; align-items: start; }
+.columna { display: grid; gap: 1.2rem; }
+.columna .tarjeta + .tarjeta { margin-top: 0; }
+h2 { font-size: 1.05rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .8rem; }
+
+.tiempo { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+.filtros { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: .6rem; }
+.filtros .campo { margin-bottom: 0; }
+.interruptor { grid-column: 1 / -1; display: inline-flex; gap: .45rem; align-items: center; font-size: .88rem; cursor: pointer; }
+.interruptor input { accent-color: var(--rojo-accion); width: 1.05rem; height: 1.05rem; }
+.linea { list-style: none; margin: .6rem 0 0; padding: 0; position: relative; }
+.linea::before { content: ""; position: absolute; left: 1.05rem; top: .5rem; bottom: .5rem; width: 2px; background: var(--borde); }
+.linea li { position: relative; display: grid; grid-template-columns: 2.1rem 1fr; gap: .7rem; padding: .5rem 0; }
+.punto { width: 2.1rem; height: 2.1rem; border-radius: 50%; display: grid; place-items: center; background: var(--rojo-suave); color: var(--rojo-texto);
+  font-size: 1.1rem; position: relative; z-index: 1; }
+.linea li.sistema .punto { background: var(--texto); color: #fff; }
+.linea li.global .punto { background: var(--ambar-suave); color: var(--ambar-texto); }
+.quien { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.vacio { padding: 1rem 0 1rem 2.8rem; }
+
+.corridas { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .8rem; }
+.corrida { display: grid; text-align: left; padding: .45rem .75rem; border-radius: var(--radio-s); border: 1px solid var(--borde); background: var(--superficie); cursor: pointer; color: var(--texto); }
+.corrida small { color: var(--texto-suave); font-size: .75rem; }
+.corrida.activa { border: 2px solid var(--texto); }
+.ficha { margin: 0; border: 1px solid var(--borde); border-radius: var(--radio-s); }
+.ficha > div { display: grid; grid-template-columns: 10rem 1fr; gap: .6rem; padding: .45rem .7rem; border-bottom: 1px solid var(--borde); }
+.ficha > div:last-child { border-bottom: 0; }
+.ficha dt { font-size: .82rem; color: var(--texto-suave); font-weight: 600; }
+.ficha dd { margin: 0; font-size: .9rem; display: flex; flex-wrap: wrap; gap: .3rem; }
+.chip { font-size: .75rem; font-weight: 600; padding: .1rem .5rem; border-radius: 99px; background: var(--gris); }
+
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.cambio { display: flex; gap: .5rem; align-items: center; font-family: var(--titulos); font-size: 1.1rem; margin: .3rem 0; }
+.tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; margin-top: .8rem; }
+.tres h3 { font-size: .88rem; margin-bottom: .3rem; }
+.ok { color: var(--verde-texto); } .sigue { color: var(--ambar-texto); } .nuevo { color: var(--rojo-texto); }
+
+.cadena { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: 0; }
+.cadena li { display: grid; gap: .25rem; justify-items: start; padding: .7rem 0 .7rem 1.2rem; border-left: 3px solid var(--texto); position: relative; }
+.cadena li::before { content: ""; position: absolute; left: -.5rem; top: .95rem; width: .7rem; height: .7rem; border-radius: 50%; background: var(--texto); }
+.paso { font-size: .75rem; font-weight: 700; color: var(--rojo-texto); }
+.cadena small { color: var(--texto-suave); font-size: .84rem; }
+.frag { font-size: .9rem; background: #FAFBFB; border: 1px solid var(--borde); border-radius: 6px; padding: .3rem .5rem; }
+.frag small { display: block; }
+
+.intervenciones { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.intervenciones li { display: flex; gap: .6rem; align-items: flex-start; padding: .5rem .6rem; border-radius: var(--radio-s); background: #FAFBFB; }
+.intervenciones li .ms { color: var(--texto-suave); }
+.intervenciones li.humana { background: var(--rojo-suave); }
+.intervenciones li.humana .ms { color: var(--rojo-texto); }
+@media (max-width: 1000px) { .rejilla { grid-template-columns: 1fr; } .tiempo { position: static; max-height: none; } }
+@media (max-width: 640px) { .tres, .dos { grid-template-columns: 1fr; } .ficha > div { grid-template-columns: 1fr; gap: .1rem; } }
