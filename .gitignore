@@ -1,1 +1,12 @@
 modules/
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Backend: entorno, datos subidos y caché de OCR
+back/.venv/
+back/data/
+__pycache__/
+*.pyc

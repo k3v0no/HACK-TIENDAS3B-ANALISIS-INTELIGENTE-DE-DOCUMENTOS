@@ -1,74 +1,88 @@
-# Hackatón Tiendas 3B — Reto 1: Expedientes
+# Backend — Expedientes 3B
 
-Repositorio de trabajo del equipo para el reto **Sistema multiagente para análisis inteligente de documentos** del Hackatón Tiendas 3B.
+API en FastAPI que recibe los PDFs de un expediente, los lee con OCR local (PaddleOCR) y
+entrega un dictamen con evidencia. Corre en una laptop; el front se conecta por HTTP.
 
-> Este README reúne información publicada por la organización. No describe una propuesta de solución.
+> **Este repositorio es público.** Nunca subas PDFs, salidas de OCR ni llaves. `back/.env`,
+> `back/data/` y `modules/` están en `.gitignore`.
 
-## Información del hackatón
+## Instalación (Windows, Python 3.13)
 
-- **Evento:** Hackatón Tiendas 3B — “Talento que hackea el futuro”.
-- **Fecha y hora anunciadas:** sábado 21 de noviembre de 2026, 9:00 a. m. (hora del centro de México).
-- **Reto elegido:** Reto 1 — Expedientes.
-- **Bases generales:** [hackaton3b.com](https://hackaton3b.com/index.html).
-- **Bases completas del reto:** [Reto 1: Expedientes](https://hackaton3b.com/expedientes.html).
+Desde la carpeta `back/`:
 
-## Descripción del reto
+```bash
+python -m venv .venv
+.venv\Scripts\python -m pip install --upgrade pip
 
-Tiendas 3B recibe expedientes legales y administrativos de inmuebles para evaluar locales comerciales e industriales que podrían habilitarse como tiendas o centros de distribución. La revisión manual requiere leer documentos, localizar información relevante, validar requisitos e identificar problemas.
+# PaddlePaddle con GPU (NVIDIA, CUDA 12.6). Sin GPU: pip install paddlepaddle==3.3.1
+.venv\Scripts\python -m pip install paddlepaddle-gpu==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 
-El reto plantea automatizar la revisión inicial con IA generativa y una arquitectura multiagente construida con **LangChain**, para apoyar al equipo legal con un análisis sustentado en evidencia. El objetivo descrito por la organización es ayudar a revisar más expedientes y priorizar la intervención humana; la decisión legal final sigue correspondiendo al equipo legal.
+.venv\Scripts\python -m pip install -r requirements.txt
+```
 
-## Tipos de documentos del expediente
+## Configuración
 
-Las bases mencionan, como mínimo, cuatro tipos documentales:
+Copia `.env.example` como `.env` y rellena:
 
-1. **Escrituras:** propietario o titular, dirección e identificación del inmueble, superficie del terreno y datos relevantes.
-2. **Predial:** propietario o contribuyente, dirección, cuenta o clave predial y superficie registrada.
-3. **Alineamiento y Número Oficial:** dirección oficial, número oficial, identificación del predio, alineamiento, vigencia cuando corresponda y autoridad emisora.
-4. **Uso de Suelo:** dirección e identificación del inmueble, uso autorizado, compatibilidad comercial, restricciones, superficie aplicable, vigencia cuando corresponda y autoridad emisora.
+| Variable | Para qué |
+|---|---|
+| `API_KEY` | Clave que el front envía en la cabecera `X-API-Key`. Obligatoria |
+| `CORS_ORIGINS` | URL(s) del front, separadas por coma |
+| `DEEPSEEK_API_KEY` | Llave del LLM |
+| `OCR_DEVICE` | `gpu` o `cpu` |
 
-Los criterios y reglas definitivos para evaluar los documentos se entregan junto con los datos del reto. Si existe alguna diferencia, prevalecen los documentos oficiales del comité organizador.
+## Ejecutar
 
-## Insumos publicados para el reto
+```bash
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-La página oficial anuncia un paquete ZIP por tipo documental:
+Documentación interactiva: http://127.0.0.1:8000/docs
 
-| Paquete | Contenido anunciado |
-| --- | ---: |
-| `Escrituras.zip` | 12 PDF · 52.3 MB |
-| `Predial.zip` | 16 PDF · 11.6 MB |
-| `Alineamiento_y_Numero_Oficial.zip` | 18 PDF · 9.6 MB |
-| `Uso_de_suelo.zip` | 16 PDF · 19.4 MB |
+Para que un front publicado en internet llegue al back hace falta un túnel con HTTPS
+(por ejemplo `ngrok http 8000`) y poner la URL del front en `CORS_ORIGINS`.
 
-Los paquetes están referenciados en la sección de descargas de las [bases del Reto 1](https://hackaton3b.com/expedientes.html#descargas). **No se incluyen en este repositorio:** las reglas oficiales indican que los documentos del reto se usan solo dentro del reto, no se suben a otros servicios ni se comparten fuera del equipo. Este repositorio es público; por ello, los archivos de datos no deben copiarse aquí. Consulten y utilicen los documentos únicamente conforme a las instrucciones y canales autorizados por la organización.
+## Rutas
 
-## Alcance y entregables descritos por la organización
+Todas menos `/salud` piden la cabecera `X-API-Key` (o `?key=` en la URL, pensado para `<img>`).
 
-Las bases indican que el sistema del reto debe poder analizar el expediente y presentar información como:
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /salud` | Comprueba que el servicio responde |
+| `GET /ejemplo/expediente` | Expediente ficticio con dictamen completo, para desarrollar el front |
+| `POST /expedientes` | Sube los PDFs (campo `archivos`, uno o varios). Devuelve el expediente con su `id` |
+| `GET /expedientes/{id}` | Estado y avance; al terminar incluye el dictamen |
+| `GET /expedientes/{id}/documentos/{doc_id}/paginas/{n}` | Imagen JPEG de la página |
 
-- Documentos recibidos y documentos faltantes.
-- Datos relevantes extraídos y validaciones realizadas.
-- Requisitos cumplidos y no cumplidos.
-- Inconsistencias entre documentos y evidencia que sustenta cada hallazgo.
-- Nivel de confianza y recomendación inicial: **Cumple**, **Requiere revisión** o **No cumple**.
+El front consulta `GET /expedientes/{id}` cada pocos segundos hasta que `estado` sea `listo` o `error`.
 
-También se solicita un prototipo funcional que permita ingresar un expediente y ejecutar el análisis, además de un pitch de **3 minutos** ante el jurado.
+### Evidencia
 
-## Criterios de evaluación publicados
+Cada evidencia trae `documento_id`, `pagina`, `texto` y `caja` (`[x0, y0, x1, y1]`).
+La caja está en píxeles de la imagen de esa página; el tamaño real viene en
+`documentos[].paginas[]` (`ancho`, `alto`) para escalar el resaltado.
 
-| Criterio | Peso |
-| --- | ---: |
-| Precisión del análisis | 30% |
-| Explicabilidad y trazabilidad | 20% |
-| Arquitectura multiagente y prototipo | 25% |
-| Pitch | 25% |
+El contrato completo está en `app/schemas.py` y en `/docs`.
 
-La organización señala que la evaluación busca equilibrar precisión, explicabilidad y eficiencia, y que una respuesta generada por un LLM por sí sola no basta.
+## OCR por lote
 
-## Regla de uso de datos
+Procesa una carpeta de PDFs y deja el resultado en caché, para que después el análisis sea rápido:
 
-Los documentos, imágenes y datos de 3B deben usarse solo dentro del reto. Las bases indican que no deben subirse a otros servicios ni compartirse fuera del equipo. Las decisiones presentadas deben provenir de la solución desarrollada por el equipo.
+```bash
+.venv\Scripts\python -m scripts.ocr_lote <carpeta_con_pdfs>
+```
 
-## Estado del proyecto
+Solo imprime conteos y confianzas, no el contenido.
 
-Este repositorio contiene únicamente información descriptiva del evento y del reto publicada por la organización. **Todavía no se documenta ni propone una solución.**
+## Estructura
+
+| Archivo | Contenido |
+|---|---|
+| `app/main.py` | Rutas, CORS y clave de acceso |
+| `app/schemas.py` | Contrato JSON con el front |
+| `app/ocr.py` | Rasterizado, PaddleOCR y caché por hash del PDF |
+| `app/pipeline.py` | Proceso en segundo plano: OCR y análisis |
+| `app/agentes.py` | Análisis multiagente (pendiente) |
+| `app/llm.py` | Conexión al LLM |
+| `app/ejemplo.py` | Expediente ficticio |
+| `data/` | PDFs subidos y caché de OCR (no se sube al repo) |

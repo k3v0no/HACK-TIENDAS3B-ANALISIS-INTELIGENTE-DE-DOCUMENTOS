@@ -1,0 +1,12 @@
+# PaddlePaddle se instala aparte (ver README): la rueda con GPU viene de su propio índice.
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+pymupdf
+paddleocr
+langchain
+langchain-deepseek
+langgraph
+rapidfuzz
+httpx
