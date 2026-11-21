@@ -14,23 +14,19 @@ import ui
 from vistas import detalle
 
 # Revisión por excepción: primero lo que necesita a una persona.
-ORDEN = {"Sin analizar": 0, "Requiere revisión": 1, "No cumple": 2, "Cumple": 3}
-FILTROS = ["Sin analizar", "Requiere revisión", "No cumple", "Cumple"]
-ICONO_FILTRO = {"Sin analizar": ":material/hourglass_empty:", "Requiere revisión": ":material/error:",
-                "No cumple": ":material/cancel:", "Cumple": ":material/check_circle:"}
+ORDEN = {"Sin analizar": 0, "Requiere revisión": 1, "No cumple": 2, "Analizando": 3, "Cumple": 4}
+FILTROS = ["Sin analizar", "Analizando", "Requiere revisión", "No cumple", "Cumple"]
 
 
 def _fecha(iso: str) -> str:
     return datetime.fromisoformat(iso).strftime("%d/%m/%Y %H:%M")
 
 
-def _hallazgos(d: dict) -> int:
-    return len(d["inconsistencias"]) + sum(v["resultado"] != "cumple" for v in d["validaciones"])
-
-
 def _estado(item: dict) -> str:
     d = item["dictamen"]
-    return d["recomendacion"] if d else "Sin analizar"
+    if d:
+        return d["recomendacion"]
+    return "Analizando" if servicio.en_proceso(item) else "Sin analizar"
 
 
 def _abrir(exp_id: str) -> None:
@@ -51,10 +47,14 @@ def _fila(item: dict) -> None:
             ui.html(ui.glifo(servicio.tipos_recibidos(rec)))
         with c3:
             if d:
-                n = _hallazgos(d)
+                n = detalle.contar_hallazgos(d)
                 ui.html(f'{ui.badge_recomendacion(d["recomendacion"])}<br>'
                         f'<span class="texto-suave">{n} hallazgo{"s" if n != 1 else ""}, '
                         f'confianza {ui.pct(d["confianza"])}</span>')
+            elif servicio.en_proceso(item):
+                etapa = servicio.estado_back(item).get("etapa") or "En cola"
+                ui.html(f'{ui.badge("Analizando", "pendiente", "progress_activity")}<br>'
+                        f'<span class="texto-suave">{escape(etapa)}</span>')
             else:
                 ui.html(ui.badge("Sin analizar", "pendiente", "hourglass_empty"))
         with c4:
@@ -63,23 +63,33 @@ def _fila(item: dict) -> None:
                       help=f"Abrir {servicio.titulo(item)}")
 
 
-def _correr_analisis(exp_id: str) -> None:
-    with st.status("Analizando expediente…", expanded=True) as estado:
-        st.write("Leyendo los documentos, extrayendo datos y comparándolos entre sí.")
-        try:
-            servicio.analizar(exp_id)
-        except Exception as e:
-            estado.update(label="El análisis no terminó", state="error")
-            st.error(f"No se pudo analizar el expediente: {e}. Revisa que los archivos se "
-                     "abran correctamente e inténtalo de nuevo.")
-            return
-        estado.update(label="Análisis terminado", state="complete")
-    _abrir(exp_id)
-    st.rerun()
+def _iniciar(exp_id: str) -> bool:
+    """Manda el expediente al back. Devuelve False (y muestra el motivo) si no se pudo."""
+    try:
+        servicio.iniciar_analisis(exp_id)
+    except Exception as e:
+        st.error(f"No se pudo enviar a análisis: {e}. Revisa que el back esté encendido e "
+                 "inténtalo de nuevo.", icon=":material/cloud_off:")
+        return False
+    return True
+
+
+@st.fragment(run_every=3)
+def _avance(exp_id: str) -> None:
+    """Se actualiza cada 3 segundos hasta que el back termina."""
+    item = servicio.sincronizar(exp_id)
+    if item is None or not servicio.en_proceso(item):
+        st.rerun()
+    b = servicio.estado_back(item)
+    with st.container(border=True, key="avance"):
+        ui.html(f'<div class="paso-cabeza"><span class="icono">{ui.icono("progress_activity")}</span>'
+                f"<div><h3>Analizando el expediente</h3><p>{escape(b.get('etapa') or 'En cola')}. "
+                "Puedes salir de esta página; el análisis sigue en segundo plano.</p></div></div>")
 
 
 def _sin_analizar(item: dict, cuenta: dict) -> None:
     rec = item["recepcion"]
+    b = servicio.estado_back(item)
     st.button("Volver a la bandeja", icon=":material/arrow_back:",
               on_click=lambda: st.session_state.pop("expediente_id", None))
     izq, der = st.columns([3, 1.4], vertical_alignment="center")
@@ -90,6 +100,15 @@ def _sin_analizar(item: dict, cuenta: dict) -> None:
     with der:
         ui.html(ui.resultado(None, None))
 
+    if servicio.en_proceso(item):
+        _avance(rec["id"])
+    elif b and b.get("estado") == "error":
+        st.error(f"{b.get('error') or 'El análisis no terminó'}. Revisa que los archivos se abran "
+                 "correctamente y vuelve a intentarlo.", icon=":material/error:")
+    elif b and b.get("estado") == "listo":
+        st.info("Los documentos ya se leyeron, pero el back todavía no entregó un dictamen "
+                "(el análisis con agentes aún no está conectado).", icon=":material/info:")
+
     st.subheader("Documentos recibidos")
     por_tipo: dict[str, list[str]] = {}
     for a in rec["archivos"]:
@@ -99,14 +118,16 @@ def _sin_analizar(item: dict, cuenta: dict) -> None:
     with st.container(border=True, key="docs-recibidos"):
         ui.html(ui.lista_documentos(filas))
 
+    if servicio.en_proceso(item) or not cuentas.puede(cuenta, "expedientes.cargar"):
+        return
     disponible = servicio.back_disponible()
-    if cuentas.puede(cuenta, "expedientes.cargar"):
-        if st.button("Analizar expediente", type="primary", icon=":material/play_arrow:",
-                     disabled=not disponible):
-            _correr_analisis(rec["id"])
-        if not disponible:
-            st.caption("El análisis automático todavía no está conectado. Cuando lo esté, este "
-                       "botón se activa.")
+    etiqueta = "Volver a analizar" if b else "Analizar expediente"
+    if st.button(etiqueta, type="primary", icon=":material/play_arrow:", disabled=not disponible):
+        if _iniciar(rec["id"]):
+            st.rerun()
+    if not disponible:
+        st.caption(f"No hay conexión con el back ({servicio.BACK_URL}). Enciéndelo y revisa "
+                   "BACK_API_KEY; este botón se activa solo.")
 
 
 def bandeja() -> None:
@@ -124,7 +145,8 @@ def bandeja() -> None:
 
     ui.encabezado("inbox", "Bandeja de expedientes",
                   "Primero aparecen los que necesitan a una persona.")
-    items = servicio.listar()
+    items = [servicio.sincronizar(i["recepcion"]["id"]) or i if servicio.en_proceso(i) else i
+             for i in servicio.listar()]
     if not items:
         with st.container(border=True, key="bandeja-vacia"):
             ui.html(f'<div class="paso-cabeza"><span class="icono">{ui.icono("inbox")}</span>'
@@ -152,7 +174,11 @@ def bandeja() -> None:
         st.info("Ningún expediente coincide. Quita el filtro o cambia la búsqueda.",
                 icon=":material/search_off:")
         return
-    st.caption(f"{len(visibles)} de {len(items)} expedientes.")
+    pie, boton = st.columns([4, 1], vertical_alignment="center")
+    pie.caption(f"{len(visibles)} de {len(items)} expedientes.")
+    if any(servicio.en_proceso(i) for i in items):
+        boton.button("Actualizar", icon=":material/refresh:", width="stretch",
+                     help="Consulta de nuevo el avance de los expedientes en análisis")
     for item in visibles:
         _fila(item)
 
@@ -163,17 +189,16 @@ def cargar() -> None:
                   "Sube los documentos de un mismo inmueble, uno por paso. La dirección se toma "
                   "de los propios documentos.")
     disponible = servicio.back_disponible()
-    docs = carga.asistente("carga3b", "Analizar expediente" if disponible else "Guardar expediente",
+    docs = carga.asistente("carga3b", "Enviar a análisis" if disponible else "Guardar expediente",
                            ":material/play_arrow:" if disponible else ":material/save:")
     if docs:
         rec = servicio.recibir(docs, origen="3b", cuenta=cuenta["usuario"])
         carga.reiniciar("carga3b")
-        if disponible:
-            _correr_analisis(rec["id"])
-        else:
-            st.toast("Expediente guardado en la bandeja", icon=":material/check_circle:")
-            _abrir(rec["id"])
-            st.switch_page(st.session_state["pagina_bandeja"])
+        enviado = disponible and _iniciar(rec["id"])
+        st.toast("Expediente enviado a análisis" if enviado else "Expediente guardado en la bandeja",
+                 icon=":material/check_circle:")
+        _abrir(rec["id"])
+        st.switch_page(st.session_state["pagina_bandeja"])
     if not disponible:
-        st.caption("El análisis automático todavía no está conectado: el expediente se guarda y "
-                   "queda en la bandeja como «Sin analizar».")
+        st.caption(f"No hay conexión con el back ({servicio.BACK_URL}): el expediente se guarda "
+                   "y queda en la bandeja como «Sin analizar».")

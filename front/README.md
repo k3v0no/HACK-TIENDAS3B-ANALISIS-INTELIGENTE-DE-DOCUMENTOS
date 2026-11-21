@@ -1,94 +1,79 @@
-# Front: cómo correrlo
+# Front (Angular)
 
-```bash
-# una sola vez, desde la raíz del repo
-py -3 -m venv .venv
-.venv/Scripts/python -m pip install -r front/requirements.txt
+Prototipo de revisión de expedientes, Hackatón Tiendas 3B. Angular 21 con componentes
+standalone y señales. La versión anterior en Streamlit está en `../front-streamlit/`.
 
-# cada vez
+## Correrlo
+
+Requiere Node 20.19+, 22.12+ o 24+ y pnpm (`npm install -g pnpm` si no lo tienes).
+
+```powershell
 cd front
-../.venv/Scripts/python -m streamlit run app.py               # http://localhost:8501
+pnpm install         # una sola vez
+pnpm start           # http://localhost:4200
 ```
 
-- `contrato.py`: forma del dictamen que el back debe entregar.
-- `servicio.py`: puente con el back. Cuando exista `back/pipeline.py` con
-  `analizar_expediente(rutas, inmueble) -> dict`, el front lo usa solo. Mientras tanto, los expedientes
-  se guardan y quedan en la bandeja como «Sin analizar».
-- Los archivos subidos y los dictámenes se guardan solo en local, en `modules/cargas/<id>/` (ignorado por git).
+Los comandos van dentro de `front/`: el `package.json` de la raíz del repo solo trae herramientas
+de prueba. `pnpm-workspace.yaml` deja correr los scripts de instalación de esbuild, lmdb,
+msgpackr-extract y @parcel/watcher, que usa el compilador de Angular.
 
----
+Antes, enciende el back (ver `../back/README.md`). El servidor de desarrollo reenvía `/api` al
+back y le agrega la cabecera `X-API-Key`, así la clave nunca llega al navegador y no hace falta
+tocar `CORS_ORIGINS`. La configuración está en `proxy.conf.mjs`:
 
-# Hackatón Tiendas 3B — Reto 1: Expedientes
+- Si el back corre en esta misma computadora no hay que configurar nada: la clave se lee de
+  `back/.env`.
+- Si corre en otra laptop (arrancado con `--host 0.0.0.0`):
 
-Repositorio de trabajo del equipo para el reto **Sistema multiagente para análisis inteligente de documentos** del Hackatón Tiendas 3B.
+  ```powershell
+  $env:BACK_URL = "http://<IP de esa laptop>:8000"
+  $env:BACK_API_KEY = "<el API_KEY de back/.env>"
+  pnpm start
+  ```
 
-> Este README reúne información publicada por la organización. No describe una propuesta de solución.
+Si el back no responde, los expedientes se guardan y quedan como «Sin analizar»; el botón
+«Analizar» se activa cuando el back vuelve.
 
-## Información del hackatón
+## Cuentas de prueba
 
-- **Evento:** Hackatón Tiendas 3B — “Talento que hackea el futuro”.
-- **Fecha y hora anunciadas:** sábado 21 de noviembre de 2026, 9:00 a. m. (hora del centro de México).
-- **Reto elegido:** Reto 1 — Expedientes.
-- **Bases generales:** [hackaton3b.com](https://hackaton3b.com/index.html).
-- **Bases completas del reto:** [Reto 1: Expedientes](https://hackaton3b.com/expedientes.html).
+Contraseña de todas: `demo3b`.
 
-## Descripción del reto
+| Perfil | Usuario | Qué ve |
+|---|---|---|
+| Arrendador | `arrendador` | Envía documentos por pasos y consulta su trámite. Nunca ve el dictamen |
+| Superusuario | `admin` | Da de alta trabajadores y administra su acceso. No ve expedientes |
+| Jurídico | `juridico` | Todo el expediente; decide |
+| Analista de expansión | `analista` | Carga y revisa, sin datos fiscales |
+| Gestor de trámites | `gestor` | Sin propietario ni datos fiscales |
+| Fiscal | `fiscal` | Sin datos regulatorios |
+| Gerente | `gerente` | Sin documentos originales; decide |
+| Auditor | `auditor` | Todo, en solo lectura |
 
-Tiendas 3B recibe expedientes legales y administrativos de inmuebles para evaluar locales comerciales e industriales que podrían habilitarse como tiendas o centros de distribución. La revisión manual requiere leer documentos, localizar información relevante, validar requisitos e identificar problemas.
+Las cuentas, la sesión y la lista de expedientes se simulan en el navegador (almacenamiento
+local; contraseñas derivadas con PBKDF2). El back no tiene una ruta para listar expedientes, así
+que para la demo el arrendador y los trabajadores usan el mismo navegador. Los archivos subidos
+se guardan en IndexedDB para poder reintentar el análisis.
 
-El reto plantea automatizar la revisión inicial con IA generativa y una arquitectura multiagente construida con **LangChain**, para apoyar al equipo legal con un análisis sustentado en evidencia. El objetivo descrito por la organización es ayudar a revisar más expedientes y priorizar la intervención humana; la decisión legal final sigue correspondiendo al equipo legal.
+## Estructura
 
-## Tipos de documentos del expediente
+| Ruta | Contenido |
+|---|---|
+| `src/styles.css` | Sistema visual: paleta 3B, tipografía, botones, avisos, insignias |
+| `src/app/core/back.ts` | Contrato JSON del back (copia de `back/app/schemas.py`) |
+| `src/app/core/traduccion.ts` | Convierte la respuesta del back a la forma que usan las vistas |
+| `src/app/core/expedientes.service.ts` | Registro local, IndexedDB y llamadas al back |
+| `src/app/core/cuentas.service.ts` | Cuentas, perfiles y permisos por área |
+| `src/app/core/navegacion.ts` | Guardias de ruta e inicio por perfil |
+| `src/app/ui/` | Componentes compartidos: asistente de carga, visor de evidencia, insignias |
+| `src/app/paginas/` | Portada, marco con barra lateral y vistas por perfil |
 
-Las bases mencionan, como mínimo, cuatro tipos documentales:
+Si el back cambia `app/schemas.py`, solo hay que ajustar `core/back.ts` y `core/traduccion.ts`.
 
-1. **Escrituras:** propietario o titular, dirección e identificación del inmueble, superficie del terreno y datos relevantes.
-2. **Predial:** propietario o contribuyente, dirección, cuenta o clave predial y superficie registrada.
-3. **Alineamiento y Número Oficial:** dirección oficial, número oficial, identificación del predio, alineamiento, vigencia cuando corresponda y autoridad emisora.
-4. **Uso de Suelo:** dirección e identificación del inmueble, uso autorizado, compatibilidad comercial, restricciones, superficie aplicable, vigencia cuando corresponda y autoridad emisora.
+## Compilar
 
-Los criterios y reglas definitivos para evaluar los documentos se entregan junto con los datos del reto. Si existe alguna diferencia, prevalecen los documentos oficiales del comité organizador.
+```powershell
+pnpm build           # salida en dist/front
+```
 
-## Insumos publicados para el reto
-
-La página oficial anuncia un paquete ZIP por tipo documental:
-
-| Paquete | Contenido anunciado |
-| --- | ---: |
-| `Escrituras.zip` | 12 PDF · 52.3 MB |
-| `Predial.zip` | 16 PDF · 11.6 MB |
-| `Alineamiento_y_Numero_Oficial.zip` | 18 PDF · 9.6 MB |
-| `Uso_de_suelo.zip` | 16 PDF · 19.4 MB |
-
-Los paquetes están referenciados en la sección de descargas de las [bases del Reto 1](https://hackaton3b.com/expedientes.html#descargas). **No se incluyen en este repositorio:** las reglas oficiales indican que los documentos del reto se usan solo dentro del reto, no se suben a otros servicios ni se comparten fuera del equipo. Este repositorio es público; por ello, los archivos de datos no deben copiarse aquí. Consulten y utilicen los documentos únicamente conforme a las instrucciones y canales autorizados por la organización.
-
-## Alcance y entregables descritos por la organización
-
-Las bases indican que el sistema del reto debe poder analizar el expediente y presentar información como:
-
-- Documentos recibidos y documentos faltantes.
-- Datos relevantes extraídos y validaciones realizadas.
-- Requisitos cumplidos y no cumplidos.
-- Inconsistencias entre documentos y evidencia que sustenta cada hallazgo.
-- Nivel de confianza y recomendación inicial: **Cumple**, **Requiere revisión** o **No cumple**.
-
-También se solicita un prototipo funcional que permita ingresar un expediente y ejecutar el análisis, además de un pitch de **3 minutos** ante el jurado.
-
-## Criterios de evaluación publicados
-
-| Criterio | Peso |
-| --- | ---: |
-| Precisión del análisis | 30% |
-| Explicabilidad y trazabilidad | 20% |
-| Arquitectura multiagente y prototipo | 25% |
-| Pitch | 25% |
-
-La organización señala que la evaluación busca equilibrar precisión, explicabilidad y eficiencia, y que una respuesta generada por un LLM por sí sola no basta.
-
-## Regla de uso de datos
-
-Los documentos, imágenes y datos de 3B deben usarse solo dentro del reto. Las bases indican que no deben subirse a otros servicios ni compartirse fuera del equipo. Las decisiones presentadas deben provenir de la solución desarrollada por el equipo.
-
-## Estado del proyecto
-
-Este repositorio contiene únicamente información descriptiva del evento y del reto publicada por la organización. **Todavía no se documenta ni propone una solución.**
+En producción, el mismo papel del proxy (agregar la clave y reenviar `/api`) lo hace el
+servidor que publique el front, dentro de la red de Tiendas 3B.

@@ -1,0 +1,119 @@
+<div class="progreso">
+  <p><b>{{ cargados() }} de {{ N }} documentos cargados</b>&ngsp;<span class="suave">Elige una tarjeta para ir a ese documento.</span></p>
+  <span class="barra" role="progressbar" aria-label="Documentos cargados" aria-valuemin="0" [attr.aria-valuemax]="N"
+        [attr.aria-valuenow]="cargados()"><i [style.width.%]="cargados() / N * 100"></i></span>
+</div>
+
+<ol class="tarjetas" aria-label="Pasos de la carga">
+  @for (t of tipos; track t; let i = $index) {
+    <li>
+      <button type="button" class="tile" [class]="'tile ' + estadoTarjeta(i)" [class.actual]="paso() === i"
+              [attr.aria-current]="paso() === i ? 'step' : null" (click)="ir(i)">
+        <span class="fila-tile">
+          <span class="icono"><span class="ms" aria-hidden="true">{{ estadoTarjeta(i) === 'hecho' ? 'check' : DOC[t].icono }}</span></span>
+          <span class="num">Paso {{ i + 1 }}</span>
+        </span>
+        <b>{{ DOC[t].corto }}</b>
+        @switch (estadoTarjeta(i)) {
+          @case ('hecho') { <span class="badge cumple">{{ docs()[t].length }} archivo{{ docs()[t].length > 1 ? 's' : '' }}</span> }
+          @case ('omitido') { <span class="badge revisar">Lo enviarás después</span> }
+          @default { <span class="badge neutra">Pendiente</span> }
+        }
+      </button>
+    </li>
+  }
+  <li>
+    <button type="button" class="tile final" [class.actual]="paso() === N" [attr.aria-current]="paso() === N ? 'step' : null" (click)="ir(N)">
+      <span class="fila-tile">
+        <span class="icono"><span class="ms" aria-hidden="true">send</span></span>
+        <span class="num">Final</span>
+      </span>
+      <b>Revisar y enviar</b>
+      @if (cargados()) { <span class="badge cumple">Listo para enviar</span> } @else { <span class="badge neutra">Sin archivos</span> }
+    </button>
+  </li>
+</ol>
+
+<section class="tarjeta paso" aria-live="polite">
+  @if (paso() < N) {
+    <div class="cabeza">
+      <span class="icono-caja"><span class="ms" aria-hidden="true">{{ DOC[tipoActual()].icono }}</span></span>
+      <div>
+        <h2>Paso {{ paso() + 1 }} de {{ N }}: {{ tipoActual() }}</h2>
+        <p class="suave">{{ DOC[tipoActual()].que }}. {{ DOC[tipoActual()].paraQue }}</p>
+      </div>
+    </div>
+
+    <label class="zona" [class.encima]="arrastrando()"
+           (dragover)="alArrastrar($event, true)" (dragleave)="alArrastrar($event, false)" (drop)="alSoltar($event)">
+      <input type="file" multiple [accept]="acepta" (change)="alElegir($event)" class="sr-only">
+      <span class="ms nube" aria-hidden="true">upload_file</span>
+      <span><b>Arrastra aquí los archivos o elígelos</b><br>
+        <span class="suave pequeno">PDF o fotos legibles (JPG, PNG). Incluye todas las páginas.</span></span>
+      <span class="btn chico">Elegir archivos</span>
+    </label>
+
+    @if (rechazados().length) {
+      <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">block</span>
+        <span>No se agregó {{ rechazados().join(', ') }}: solo se aceptan PDF, JPG o PNG.</span></div>
+    }
+
+    @if (docs()[tipoActual()].length) {
+      <ul class="archivos">
+        @for (f of docs()[tipoActual()]; track f.name + f.size; let j = $index) {
+          <li>
+            <span class="ms lleno ok" aria-hidden="true">check_circle</span>
+            <span class="nombre"><b>{{ f.name }}</b>&ngsp;<span class="suave pequeno">{{ tamano(f.size) }}</span></span>
+            <button type="button" class="btn chico fantasma" (click)="quitar(j)" [attr.aria-label]="'Quitar ' + f.name">
+              <span class="ms" aria-hidden="true">delete</span>Quitar</button>
+          </li>
+        }
+      </ul>
+    }
+
+    <div class="navegacion">
+      @if (paso() > 0) {
+        <button type="button" class="btn" (click)="ir(paso() - 1)"><span class="ms" aria-hidden="true">arrow_back</span>Anterior</button>
+      } @else { <span></span> }
+      @if (docs()[tipoActual()].length) {
+        <button type="button" class="btn primario" (click)="continuar(false)">
+          {{ paso() === N - 1 ? 'Revisar y enviar' : 'Continuar con ' + DOC[tipos[paso() + 1]].corto.toLowerCase() }}
+          <span class="ms" aria-hidden="true">arrow_forward</span></button>
+      } @else {
+        <button type="button" class="btn" (click)="continuar(true)" title="Podrás enviarlo después; el análisis lo marcará como faltante">
+          No lo tengo, continuar<span class="ms" aria-hidden="true">skip_next</span></button>
+      }
+    </div>
+  } @else {
+    <div class="cabeza">
+      <span class="icono-caja"><span class="ms" aria-hidden="true">fact_check</span></span>
+      <div>
+        <h2>Revisa antes de enviar</h2>
+        <p class="suave">Puedes regresar a cualquier documento para agregar o quitar archivos.</p>
+      </div>
+    </div>
+    <ul class="resumen">
+      @for (t of tipos; track t; let i = $index) {
+        <li [class.si]="docs()[t].length">
+          <span class="icono"><span class="ms" aria-hidden="true">{{ DOC[t].icono }}</span></span>
+          <span class="nombre"><b>{{ t }}</b><small>{{ nombres(t) || 'Sin archivo' }}</small></span>
+          @if (docs()[t].length) { <span class="badge cumple"><span class="ms" aria-hidden="true">check</span>Cargado</span> }
+          @else { <span class="badge neutra">Falta</span> }
+          <button type="button" class="btn chico fantasma" (click)="ir(i)" [attr.aria-label]="'Editar ' + t">
+            <span class="ms" aria-hidden="true">edit</span>Editar</button>
+        </li>
+      }
+    </ul>
+    @if (faltan().length === N) {
+      <div class="aviso error"><span class="ms" aria-hidden="true">block</span>Agrega al menos un documento para poder enviar.</div>
+    } @else if (faltan().length) {
+      <div class="aviso alerta"><span class="ms" aria-hidden="true">info</span>
+        <span>Falta {{ faltan().join(', ').toLowerCase() }}. Puedes enviar así, pero el expediente quedará incompleto hasta que lo agregues.</span></div>
+    }
+    <div class="navegacion">
+      <button type="button" class="btn" (click)="ir(N - 1)"><span class="ms" aria-hidden="true">arrow_back</span>Anterior</button>
+      <button type="button" class="btn primario" [disabled]="faltan().length === N || ocupado()" (click)="confirmar()">
+        <span class="ms" aria-hidden="true">{{ ocupado() ? 'progress_activity' : iconoEnvio() }}</span>{{ ocupado() ? 'Enviando…' : etiquetaEnvio() }}</button>
+    </div>
+  }
+</section>

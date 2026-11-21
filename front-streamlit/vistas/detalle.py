@@ -18,6 +18,14 @@ from contrato import TIPOS_DOCUMENTO
 
 ORDEN_RESULTADO = {"no_cumple": 0, "revisar": 1, "cumple": 2}
 OCULTO = "Oculto por permisos"
+SEVERIDAD = {"alta": ("Alta", "no_cumple", "priority_high"), "media": ("Media", "revisar", "error"),
+             "baja": ("Baja", "neutra", "info")}
+
+
+def contar_hallazgos(exp: dict) -> int:
+    if "hallazgos" in exp:
+        return len(exp["hallazgos"])
+    return len(exp["inconsistencias"]) + sum(v["resultado"] != "cumple" for v in exp["validaciones"])
 
 
 def _nombre_doc(exp: dict, doc_id: str) -> str:
@@ -65,16 +73,34 @@ def _alertas_lectura(exp: dict) -> None:
                    icon=":material/visibility:")
 
 
+def _hallazgos_back(exp: dict, cuenta: dict) -> None:
+    for h in exp["hallazgos"]:
+        etiqueta, clase, ic = SEVERIDAD.get(h["severidad"], SEVERIDAD["media"])
+        with st.container(border=True, key=f"hb-{h['id']}"):
+            ui.html(f"{ui.badge(f'Severidad {etiqueta.lower()}', clase, ic)} "
+                    f"<b>{escape(h['titulo'])}</b>")
+            st.markdown(h["explicacion"])
+            if h.get("accion_sugerida"):
+                ui.html(f'{ui.icono("lightbulb")} <b>Qué hacer:</b> {escape(h["accion_sugerida"])}')
+            if h["evidencia"]:
+                with st.expander(f"Evidencia ({len(h['evidencia'])})"):
+                    _evidencias(exp, cuenta, h["evidencia"], f"hb-{h['id']}")
+
+
 def _hallazgos(exp: dict, cuenta: dict) -> None:
     incs = exp["inconsistencias"]
-    problemas = sorted((v for v in exp["validaciones"] if v["resultado"] != "cumple"),
-                       key=lambda v: ORDEN_RESULTADO[v["resultado"]])
-    if not incs and not problemas:
+    con_resumen = "hallazgos" in exp
+    problemas = [] if con_resumen else sorted(
+        (v for v in exp["validaciones"] if v["resultado"] != "cumple"),
+        key=lambda v: ORDEN_RESULTADO[v["resultado"]])
+    if not incs and not problemas and not exp.get("hallazgos"):
         st.success("No hay hallazgos: todas las validaciones se cumplieron.",
                    icon=":material/task_alt:")
         return
+    if con_resumen:
+        _hallazgos_back(exp, cuenta)
     if incs:
-        st.subheader("Diferencias entre documentos")
+        st.subheader("Valores que no coinciden entre documentos")
         for inc in incs:
             visible = _ve(cuenta, inc["campo"])
             with st.container(border=True, key=f"inc-{inc['id']}"):
@@ -144,7 +170,7 @@ def mostrar(exp: dict, cuenta: dict) -> None:
     puede_docs = cuentas.puede(cuenta, "documentos.ver")
     principal, panel = (st.columns([3, 2], gap="large") if puede_docs else (st.container(), None))
     with principal:
-        n = len(exp["inconsistencias"]) + sum(v["resultado"] != "cumple" for v in exp["validaciones"])
+        n = contar_hallazgos(exp)
         t1, t2, t3 = st.tabs([f":material/report: Hallazgos ({n})", ":material/dataset: Datos extraídos",
                               ":material/rule: Validaciones"])
         with t1:

@@ -77,6 +77,12 @@ def enviar() -> None:
     if docs:
         rec = servicio.recibir(docs, origen="arrendador", cuenta=cuenta["usuario"])
         carga.reiniciar("arr")
+        # Si el back está encendido, el análisis arranca ya; si no, 3B lo lanza desde su bandeja.
+        if servicio.back_disponible():
+            try:
+                servicio.iniciar_analisis(rec["id"])
+            except Exception:
+                pass
         st.session_state["ultimo_envio"] = rec["id"]
         st.rerun()
 
@@ -85,7 +91,8 @@ def tramites() -> None:
     cuenta = st.session_state["cuenta"]
     ui.encabezado("folder_shared", "Mis trámites",
                   "Qué documentos ya cargaste, en qué va la revisión y qué falta.")
-    items = servicio.listar(cuenta=cuenta["usuario"])
+    items = [servicio.sincronizar(i["recepcion"]["id"]) or i if servicio.en_proceso(i) else i
+             for i in servicio.listar(cuenta=cuenta["usuario"])]
     if not items:
         with st.container(border=True, key="tramites-vacio"):
             ui.html(f'<div class="paso-cabeza"><span class="icono">{ui.icono("folder_open")}</span>'

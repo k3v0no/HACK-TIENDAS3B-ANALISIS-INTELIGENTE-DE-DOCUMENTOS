@@ -1,0 +1,88 @@
+.pagina { max-width: 1120px; margin: 0 auto; padding: 1.25rem 1.5rem 4rem; }
+
+.barra-sup { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding-bottom: 1rem; border-bottom: 1px solid var(--borde); }
+.marca3b { display: inline-flex; align-items: center; gap: .6rem; font-weight: 700; }
+.marca3b .logo { width: 2.4rem; height: 2.4rem; border-radius: 10px; background: var(--rojo); color: #fff; display: grid;
+  place-items: center; font-family: var(--titulos); font-weight: 800; font-size: 1.2rem; letter-spacing: -0.04em; }
+.marca3b small { display: block; font-weight: 500; color: var(--texto-suave); font-size: .78rem; }
+.seguro { display: inline-flex; align-items: center; gap: .4rem; font-size: .88rem; }
+
+/* ---------- Hero ---------- */
+.hero { text-align: center; max-width: 46rem; margin: 3.4rem auto 2.4rem; }
+.sello { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .85rem .3rem .35rem; border-radius: 999px;
+  background: var(--superficie); border: 1px solid var(--borde); font-size: .86rem; font-weight: 500; box-shadow: var(--sombra); }
+.sello .ms { background: var(--verde); border-radius: 50%; width: 1.55rem; height: 1.55rem; display: grid; place-items: center; font-size: 1rem; }
+.hero h1 { font-size: clamp(2.2rem, 5.4vw, 3.8rem); line-height: 1.04; letter-spacing: -0.035em; margin: 1.3rem auto 1rem; max-width: 16ch; }
+.hero .lead { margin: 0 auto; }
+
+/* ---------- Ingresar como ---------- */
+.acceso h2 { text-align: center; font-size: 1.2rem; margin-bottom: 1rem; }
+.perfiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; max-width: 52rem; margin: 0 auto; }
+.perfil {
+  display: flex; flex-direction: column; gap: .7rem; text-align: left; padding: 1.4rem; cursor: pointer;
+  background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio-l); box-shadow: var(--sombra);
+  transition: border-color .15s, box-shadow .15s;
+}
+.perfil:hover { border-color: var(--rojo-accion); box-shadow: var(--sombra-alta); }
+.perfil.sel { border: 2px solid var(--rojo-accion); box-shadow: 0 0 0 4px var(--rojo-suave); padding: calc(1.4rem - 1px); }
+.cabeza { display: flex; justify-content: space-between; align-items: flex-start; }
+.icono { width: 3.6rem; height: 3.6rem; border-radius: 16px; display: grid; place-items: center; font-size: 1.8rem; flex: none; }
+.icono.rojo { background: var(--rojo); color: #fff; }
+.icono.verde { background: var(--verde); color: var(--texto); }
+.marca { width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 2px solid var(--borde); display: grid; place-items: center;
+  color: transparent; font-size: 1.05rem; }
+.perfil.sel .marca { background: var(--rojo-accion); border-color: var(--rojo-accion); color: #fff; }
+.titulo { font-family: var(--titulos); font-weight: 700; font-size: 1.35rem; }
+.para { font-size: .95rem; }
+.puntos { display: grid; gap: .4rem; }
+.puntos > span { display: flex; gap: .5rem; align-items: center; font-size: .92rem; }
+.puntos .ms { color: var(--verde-texto); font-size: 1.1rem; }
+
+.login { max-width: 28rem; margin: 1.4rem auto 0; padding: 1.5rem; border-radius: var(--radio-l); }
+.login-cabeza { display: flex; gap: .9rem; align-items: center; margin-bottom: 1.1rem; }
+.login-cabeza .icono { width: 3rem; height: 3rem; border-radius: 14px; font-size: 1.5rem; }
+.login-cabeza h3 { font-size: 1.15rem; }
+.login .aviso { margin-bottom: 1rem; }
+
+.pestanas { display: flex; gap: .3rem; padding: .25rem; background: var(--gris); border-radius: 999px; margin-bottom: 1.1rem; }
+.pestanas button { flex: 1; border: 0; background: transparent; padding: .45rem .8rem; border-radius: 999px; font-weight: 600; cursor: pointer; color: var(--texto-suave); }
+.pestanas button.activa { background: var(--superficie); color: var(--texto); box-shadow: var(--sombra); }
+
+.demo { margin-top: 1.2rem; border-top: 1px solid var(--borde); padding-top: .9rem; }
+.demo summary { cursor: pointer; font-weight: 600; font-size: .92rem; display: flex; gap: .4rem; align-items: center; }
+.demo ul { list-style: none; padding: 0; margin: .7rem 0; display: grid; gap: .35rem; }
+.cuenta-demo { width: 100%; display: flex; gap: .7rem; align-items: center; text-align: left; padding: .5rem .6rem;
+  border: 1px solid var(--borde); border-radius: var(--radio-s); background: var(--superficie); cursor: pointer; }
+.cuenta-demo:hover { border-color: var(--rojo-accion); }
+.cuenta-demo > .ms { color: var(--rojo-accion); }
+.cuenta-demo > span:nth-child(2) { flex: 1; min-width: 0; }
+.cuenta-demo small { display: block; color: var(--texto-suave); font-size: .8rem; }
+.usar { font-size: .82rem; font-weight: 600; color: var(--rojo-accion); }
+
+/* ---------- Secuencia del expediente ---------- */
+.ruta { text-align: center; max-width: 62rem; margin: 4rem auto 0; }
+.ruta h2 { font-size: 1.35rem; }
+.ruta > p { margin: .35rem auto 1.8rem; max-width: 60ch; }
+.ruta ol { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; }
+.ruta li { position: relative; display: flex; flex-direction: column; align-items: center; gap: .55rem; font-size: .9rem; }
+.ruta li:not(:last-child)::after { content: ""; position: absolute; top: 1.6rem; left: calc(50% + 2.1rem); right: calc(-50% + 2.1rem);
+  border-top: 2px dashed var(--borde-fuerte); }
+.ruta .icono { width: 3.2rem; height: 3.2rem; border-radius: 50%; font-size: 1.45rem; background: var(--superficie);
+  border: 1px solid var(--borde); box-shadow: var(--sombra); color: var(--rojo-accion); }
+.ruta li.final .icono { background: var(--texto); color: #fff; border-color: var(--texto); }
+.ruta b { display: block; }
+.ruta small { display: block; color: var(--texto-suave); font-size: .8rem; }
+.salidas { display: flex; flex-wrap: wrap; gap: .3rem; justify-content: center; margin-top: .35rem; }
+
+@media (max-width: 860px) {
+  .ruta ol { grid-template-columns: 1fr; gap: .9rem; max-width: 24rem; margin: 0 auto; }
+  .ruta li { flex-direction: row; text-align: left; }
+  .ruta li:not(:last-child)::after { display: none; }
+  .salidas { justify-content: flex-start; }
+}
+@media (max-width: 640px) {
+  .pagina { padding: 1rem 1rem 3rem; }
+  .hero { margin-top: 2.2rem; }
+  .perfiles { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,223 @@
+<a class="volver" routerLink="/trabajador/bandeja"><span class="ms" aria-hidden="true">arrow_back</span>Volver a la bandeja</a>
+
+<ng-template #evidencias let-lista let-campo="campo">
+  @if (!campo || ve(campo)) {
+    @for (ev of lista; track $index) {
+      <div class="evidencia">
+        @if (veEvidencia(ev)) {
+          <app-fragmento [ev]="ev" [origen]="nombreDoc(ev.documento)" />
+          @if (puedeDocs) {
+            <button type="button" class="btn chico" (click)="verEnDocumento(ev)"
+                    [class.activo]="evidencia() === ev"><span class="ms" aria-hidden="true">plagiarism</span>Ver en el documento</button>
+          }
+        } @else {
+          <p class="oculto-dato pequeno"><span class="ms" aria-hidden="true">lock</span> Fragmento de {{ nombreDoc(ev.documento) }} oculto por permisos</p>
+        }
+      </div>
+    }
+  }
+</ng-template>
+
+@if (exp(); as e) {
+  <header class="cabeza">
+    <div class="texto">
+      <h1>{{ titulo() }}</h1>
+      <p class="suave">Folio {{ e.id }}.
+        @if (d(); as dic) { Analizado el {{ fecha(dic.fechaAnalisis) }}. } @else { Recibido el {{ fecha(e.fecha) }}. La dirección se tomará de los documentos al analizarlo. }
+      </p>
+    </div>
+    @if (d(); as dic) {
+      <div class="resultado" [class]="'resultado ' + (dic.recomendacion === 'Cumple' ? 'cumple' : dic.recomendacion === 'No cumple' ? 'no_cumple' : 'revisar')" role="status">
+        <span class="ms lleno" aria-hidden="true">{{ dic.recomendacion === 'Cumple' ? 'check_circle' : dic.recomendacion === 'No cumple' ? 'cancel' : 'error' }}</span>
+        <div><b>{{ dic.recomendacion }}</b><span class="suave pequeno">Confianza {{ pct(dic.confianza) }}</span>
+          <span class="barra" aria-hidden="true"><i [style.width.%]="dic.confianza * 100"></i></span></div>
+      </div>
+    } @else {
+      <div class="resultado pendiente" role="status">
+        <span class="ms" aria-hidden="true">{{ enProceso() ? 'progress_activity' : 'hourglass_empty' }}</span>
+        <div><b>{{ enProceso() ? 'Analizando' : 'Sin analizar' }}</b><span class="suave pequeno">{{ enProceso() ? (e.back?.etapa || 'En cola') : 'Falta lanzar el análisis' }}</span></div>
+      </div>
+    }
+  </header>
+
+  @if (d(); as dic) {
+    <section class="tarjeta resumen">
+      <p class="fila"><app-glifo [tipos]="tiposRecibidos()" /><span class="suave">{{ faltanTexto() }}</span></p>
+      <p class="lead">{{ dic.resumen }}</p>
+    </section>
+
+    @for (a of dic.alertas; track a.documento + a.pagina) {
+      <div class="aviso alerta"><span class="ms" aria-hidden="true">visibility</span>
+        <span><b>Lectura dudosa en {{ nombreDoc(a.documento) }}, página {{ a.pagina }}</b> (confianza {{ pct(a.confianza) }}). {{ a.mensaje }}</span></div>
+    }
+
+    <div class="cuerpo" [class.con-visor]="puedeDocs">
+      <div class="principal">
+        <div class="pestanas" role="tablist" aria-label="Secciones del dictamen">
+          <button type="button" role="tab" id="tab-hallazgos" aria-controls="panel" [attr.aria-selected]="pestana() === 'hallazgos'" (click)="pestana.set('hallazgos')">
+            <span class="ms" aria-hidden="true">report</span>Hallazgos <span class="n">{{ nHallazgos() }}</span></button>
+          <button type="button" role="tab" id="tab-datos" aria-controls="panel" [attr.aria-selected]="pestana() === 'datos'" (click)="pestana.set('datos')">
+            <span class="ms" aria-hidden="true">dataset</span>Datos extraídos</button>
+          <button type="button" role="tab" id="tab-validaciones" aria-controls="panel" [attr.aria-selected]="pestana() === 'validaciones'" (click)="pestana.set('validaciones')">
+            <span class="ms" aria-hidden="true">rule</span>Validaciones</button>
+        </div>
+
+        <div id="panel" role="tabpanel" [attr.aria-labelledby]="'tab-' + pestana()">
+          @switch (pestana()) {
+            @case ('hallazgos') {
+              @if (!dic.hallazgos.length && !dic.inconsistencias.length && !problemas().length) {
+                <div class="aviso exito"><span class="ms" aria-hidden="true">task_alt</span>No hay hallazgos: todas las validaciones se cumplieron.</div>
+              }
+              @for (h of dic.hallazgos; track h.id) {
+                <article class="tarjeta hallazgo" [class]="'tarjeta hallazgo ' + h.severidad">
+                  <p class="fila"><span class="badge" [class]="'badge ' + SEVERIDAD[h.severidad].clase">
+                    <span class="ms" aria-hidden="true">{{ SEVERIDAD[h.severidad].icono }}</span>{{ SEVERIDAD[h.severidad].texto }}</span></p>
+                  <h3>{{ h.titulo }}</h3>
+                  <p>{{ h.explicacion }}</p>
+                  @if (h.accionSugerida) { <p class="accion"><span class="ms" aria-hidden="true">lightbulb</span><span><b>Qué hacer:</b> {{ h.accionSugerida }}</span></p> }
+                  @if (h.evidencia.length) {
+                    <details><summary>Evidencia ({{ h.evidencia.length }})</summary>
+                      <ng-container *ngTemplateOutlet="evidencias; context: { $implicit: h.evidencia }" /></details>
+                  }
+                </article>
+              }
+              @for (v of problemas(); track v.id) {
+                <article class="tarjeta">
+                  <p class="fila"><app-estado [valor]="v.resultado" /><b>{{ v.nombre }}</b></p>
+                  <p class="detalle">{{ v.detalle }}</p>
+                  <ng-container *ngTemplateOutlet="evidencias; context: { $implicit: v.evidencia }" />
+                </article>
+              }
+              @if (dic.inconsistencias.length) {
+                <h2 class="seccion">Valores que no coinciden entre documentos</h2>
+                @for (inc of dic.inconsistencias; track inc.id) {
+                  <article class="tarjeta">
+                    <h3 class="fila"><span class="ms" aria-hidden="true">compare_arrows</span>{{ inc.campo }}
+                      @if (inc.diferenciaPct !== undefined) { <span class="badge revisar">{{ inc.diferenciaPct }} % de diferencia</span> }</h3>
+                    <p class="detalle">{{ inc.explicacion }}</p>
+                    <div class="valores">
+                      @for (v of inc.valores; track v.documento) {
+                        <div class="valor">
+                          <span class="suave pequeno">{{ nombreDoc(v.documento) }}</span>
+                          @if (ve(inc.campo)) { <b class="cifra">{{ v.valor }}</b> } @else { <b class="oculto-dato"><span class="ms" aria-hidden="true">lock</span> {{ OCULTO }}</b> }
+                          <ng-container *ngTemplateOutlet="evidencias; context: { $implicit: v.evidencia, campo: inc.campo }" />
+                        </div>
+                      }
+                    </div>
+                    <p class="accion"><span class="ms" aria-hidden="true">lightbulb</span><span><b>Qué hacer:</b> {{ inc.accionSugerida }}</span></p>
+                  </article>
+                }
+              }
+            }
+            @case ('datos') {
+              @for (doc of dic.documentos; track doc.id) {
+                <details class="tarjeta documento" [open]="$first">
+                  <summary>
+                    <span class="icono-caja chica"><span class="ms" aria-hidden="true">{{ iconoDoc(doc.tipo) }}</span></span>
+                    <span><b>{{ doc.tipo }}</b><small class="suave">{{ doc.archivo }}, {{ doc.paginas }} página{{ doc.paginas === 1 ? '' : 's' }}, lectura {{ pct(doc.confianzaOcr) }}</small></span>
+                  </summary>
+                  @if (!dic.datos[doc.id]?.length) { <p class="suave">No se extrajeron datos de este documento.</p> }
+                  <dl>
+                    @for (dato of dic.datos[doc.id]; track dato.campo) {
+                      <div class="dato">
+                        <dt>{{ dato.campo }}</dt>
+                        <dd>
+                          @if (!ve(dato.campo)) { <span class="oculto-dato"><span class="ms" aria-hidden="true">lock</span> {{ OCULTO }}</span> }
+                          @else if (dato.valor === null) { <span class="badge no_cumple"><span class="ms" aria-hidden="true">cancel</span>No encontrado</span> }
+                          @else {
+                            <span class="valor-dato">{{ dato.valor }}</span>
+                            <ng-container *ngTemplateOutlet="evidencias; context: { $implicit: dato.evidencia, campo: dato.campo }" />
+                          }
+                        </dd>
+                      </div>
+                    }
+                  </dl>
+                </details>
+              }
+            }
+            @case ('validaciones') {
+              <div class="cifras">
+                <div class="cifra-caja cumple"><b>{{ conteo().cumple }}</b><span>Cumplen</span></div>
+                <div class="cifra-caja revisar"><b>{{ conteo().revisar }}</b><span>Por revisar</span></div>
+                <div class="cifra-caja no_cumple"><b>{{ conteo().no_cumple }}</b><span>No cumplen</span></div>
+              </div>
+              @for (v of validaciones(); track v.id) {
+                <article class="tarjeta">
+                  <p class="fila"><app-estado [valor]="v.resultado" /><b>{{ v.nombre }}</b></p>
+                  <p class="detalle">{{ v.detalle }}</p>
+                  @if (v.evidencia.length) {
+                    <details><summary>Evidencia ({{ v.evidencia.length }})</summary>
+                      <ng-container *ngTemplateOutlet="evidencias; context: { $implicit: v.evidencia }" /></details>
+                  }
+                </article>
+              }
+            }
+          }
+        </div>
+      </div>
+
+      @if (puedeDocs) {
+        <aside id="visor" class="tarjeta panel" aria-label="Evidencia">
+          <h2><span class="ms" aria-hidden="true">plagiarism</span>Evidencia</h2>
+          <app-visor [ev]="evidencia()" [documento]="documentoActivo()" [urlBase]="urlPagina" />
+        </aside>
+      }
+    </div>
+    @if (!puedeDocs) {
+      <p class="suave pequeno nota"><span class="ms" aria-hidden="true">lock</span> Tu área no incluye ver los documentos originales; los fragmentos citados sí se muestran.</p>
+    }
+
+    @if (puedeDecidir) {
+      <section class="tarjeta decision" aria-labelledby="decision-t">
+        <h2 id="decision-t">Tu decisión</h2>
+        @if (e.decision; as dec) {
+          <p class="aviso" [class]="'aviso ' + (dec.valor === 'aprobado' ? 'exito' : 'error')">
+            <span class="ms" aria-hidden="true">{{ dec.valor === 'aprobado' ? 'thumb_up' : 'thumb_down' }}</span>
+            <span>{{ dec.valor === 'aprobado' ? 'Aprobado para continuar' : 'Rechazado' }} por {{ dec.por }} el {{ fecha(dec.fecha) }}.</span></p>
+        } @else {
+          <p class="suave">La recomendación del sistema es una propuesta; la decisión final es del área.</p>
+        }
+        <div class="fila">
+          <button type="button" class="btn primario" (click)="decidir('aprobado')"><span class="ms" aria-hidden="true">thumb_up</span>Aprobar para continuar</button>
+          <button type="button" class="btn" (click)="decidir('rechazado')"><span class="ms" aria-hidden="true">thumb_down</span>Rechazar expediente</button>
+        </div>
+      </section>
+    }
+  } @else {
+    @if (enProceso()) {
+      <section class="tarjeta avance" role="status">
+        <span class="icono-caja"><span class="ms girando" aria-hidden="true">progress_activity</span></span>
+        <div><h2>Analizando el expediente</h2>
+          <p class="suave">{{ e.back?.etapa || 'En cola' }}. Puedes salir de esta página; el análisis sigue en segundo plano.</p></div>
+      </section>
+    } @else if (e.back?.estado === 'error') {
+      <div class="aviso error"><span class="ms" aria-hidden="true">error</span>
+        <span>{{ e.back?.error || 'El análisis no terminó' }}. Revisa que los archivos se abran correctamente y vuelve a intentarlo.</span></div>
+    } @else if (e.back?.estado === 'listo') {
+      <div class="aviso info"><span class="ms" aria-hidden="true">info</span>
+        <span>Los documentos ya se leyeron, pero el servicio todavía no entregó un dictamen (el análisis con agentes aún no está conectado).</span></div>
+    }
+
+    <h2 class="seccion">Documentos recibidos</h2>
+    <section class="tarjeta"><app-lista-docs [filas]="filasRecibidas()" /></section>
+
+    @if (!enProceso() && puedeAnalizar) {
+      @if (error()) { <div class="aviso error" role="alert"><span class="ms" aria-hidden="true">cloud_off</span>{{ error() }}</div> }
+      <div class="fila lanzar">
+        <button type="button" class="btn primario" [disabled]="ocupado() || conectado() === false" (click)="analizar()">
+          <span class="ms" aria-hidden="true">play_arrow</span>{{ ocupado() ? 'Enviando…' : e.back ? 'Volver a analizar' : 'Analizar expediente' }}</button>
+        @if (conectado() === false) {
+          <span class="suave pequeno">No hay conexión con el servicio de análisis. Enciéndelo y recarga la página.</span>
+        }
+      </div>
+    } @else if (!enProceso() && !e.back) {
+      <p class="suave pequeno">Un área con permiso de carga debe lanzar el análisis.</p>
+    }
+  }
+} @else {
+  <section class="tarjeta vacio">
+    <span class="icono-caja"><span class="ms" aria-hidden="true">search_off</span></span>
+    <div><h1>No encontramos ese expediente</h1>
+      <p class="suave">Puede que se haya cargado en otro navegador. Vuelve a la bandeja para ver los disponibles.</p></div>
+  </section>
+}

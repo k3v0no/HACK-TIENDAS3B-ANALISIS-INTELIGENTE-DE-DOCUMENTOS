@@ -1,11 +1,11 @@
-"""Contrato de datos entre el back (agentes) y el front.
+"""Forma del dictamen con la que trabajan las vistas del front.
 
-El back entrega un dict por expediente con esta forma. El ejemplo completo está en
-`datos_ejemplo/expedientes.json`. Si el back cambia un campo, se actualiza aquí y en el
-ejemplo para que el front y el back no se desfasen.
+El back tiene su propio contrato (`back/app/schemas.py`). `servicio.traducir` convierte la
+respuesta del back a esta forma; si el back cambia un campo, solo hay que ajustar esa función.
 
-Coordenadas de `caja`: normalizadas de 0 a 1 respecto al ancho y alto de la página
-([x0, y0, x1, y1], origen arriba a la izquierda). Así no dependen de los DPI del rasterizado.
+Coordenadas de `caja`: normalizadas de 0 a 1 respecto al ancho y alto de la imagen de la
+página ([x0, y0, x1, y1], origen arriba a la izquierda). El back las da en píxeles y
+`servicio.traducir` las divide entre el ancho y alto de cada página.
 Si no viene `caja`, el visor busca el texto del fragmento en la página.
 """
 
@@ -38,7 +38,9 @@ class Documento(TypedDict):
     id: str
     tipo: str  # uno de TIPOS_DOCUMENTO, o "Desconocido"
     archivo: str  # nombre original del archivo
-    ruta: NotRequired[str]  # ruta local al archivo (relativa a la raíz del repo o absoluta)
+    ruta: NotRequired[str | None]  # ruta local al archivo (relativa a la raíz del repo o absoluta)
+    # Imagen de página en el back, sobre la que valen las cajas: {"expediente", "documento"}.
+    imagen: NotRequired[dict]
     paginas: int
     confianza_ocr: float  # promedio del documento, de 0 a 1
 
@@ -74,6 +76,15 @@ class Inconsistencia(TypedDict):
     diferencia_pct: NotRequired[float]  # para superficies
 
 
+class Hallazgo(TypedDict):
+    id: str
+    severidad: Literal["alta", "media", "baja"]
+    titulo: str
+    explicacion: str
+    accion_sugerida: str | None
+    evidencia: list[Evidencia]
+
+
 class AlertaLectura(TypedDict):
     documento: str
     pagina: int
@@ -95,6 +106,7 @@ class Dictamen(TypedDict):
     validaciones: list[Validacion]
     inconsistencias: list[Inconsistencia]
     alertas_lectura: list[AlertaLectura]
+    hallazgos: NotRequired[list[Hallazgo]]  # resumen redactado por el back, de mayor a menor severidad
     modo_demo: NotRequired[bool]  # True si el resultado son datos de ejemplo
 
 
