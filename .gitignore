@@ -2,8 +2,17 @@ modules/
 node_modules/
 .ui-check/
 .venv/
-__pycache__/
-.env
 cache/
 *.pdf
 *.zip
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Backend: entorno, datos subidos y caché de OCR
+back/.venv/
+back/data/
+__pycache__/
+*.pyc
